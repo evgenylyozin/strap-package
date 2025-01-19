@@ -1,14 +1,14 @@
 {
-  "name": "start-package",
+  "name": "strap-package",
   "version": "0.0.0",
   "description": "Strap files and tools to start developing an npm package",
   "bin": {
-    "start-package": "./dist/index.js"
+    "strap-package": "./dist/index.js"
   },
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/evgenylyozin/start-package.git"
+    "url": "git+https://github.com/evgenylyozin/strap-package.git"
   },
   "scripts": {
     "build": "vite build && chmod +x ./dist/index.js",

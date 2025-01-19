@@ -5,7 +5,7 @@ How to get, build, develop, test, publish etc.
 ## How to get the repo
 
 ```bash
-git clone https://github.com/evgenylyozin/start-package.git
+git clone https://github.com/evgenylyozin/strap-package.git
 ```
 
 ## Initialize the repo to start developing
