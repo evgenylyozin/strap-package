@@ -1,0 +1,11 @@
+{
+  "buildOptions": {},
+  "compilerOptions": {
+    "isolatedModules": true,
+    "target": "ES2022",
+    "moduleResolution": "NodeNext",
+    "module": "NodeNext",
+    "skipLibCheck": true
+  },
+  "exclude": ["node_modules", "dist"]
+}
