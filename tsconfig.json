@@ -1,11 +1,11 @@
 {
-  "buildOptions": {},
   "compilerOptions": {
     "isolatedModules": true,
-    "target": "ES2022",
-    "moduleResolution": "NodeNext",
-    "module": "NodeNext",
-    "skipLibCheck": true
+    "moduleResolution": "node",
+    "skipLibCheck": true,
+    "allowJs": true,
+    "module": "es6",
+    "target": "es5"
   },
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "dist", "*.config*"]
 }
