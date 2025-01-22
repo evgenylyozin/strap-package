@@ -4,32 +4,94 @@ import { promisify } from "util";
 import { lookup } from "dns";
 import * as validate from "validate-npm-package-name";
 import chalk from "chalk";
+const asyncLookup = promisify(lookup);
 
-const ErrorLog = (message: string) => {
-  console.log(chalk.red(message));
+const LogEmptyLines = (count: number) => {
+  for (let i = 0; i < count; i++) {
+    console.log("");
+  }
 };
-const WarningLog = (message: string) => {
-  console.log(chalk.yellow(message));
+const ErrorLog = (...messages: string[]) => {
+  LogEmptyLines(1);
+  for (const message of messages) {
+    console.log(chalk.red(message));
+  }
 };
-const SuccessLog = (message: string) => {
-  console.log(chalk.green(message));
+const WarningLog = (...messages: string[]) => {
+  for (const message of messages) {
+    console.log(chalk.yellow(message));
+  }
 };
-const InfoLog = (message: string) => {
-  console.log(chalk.blue(message));
+const SuccessLog = (...messages: string[]) => {
+  for (const message of messages) {
+    console.log(chalk.green(message));
+  }
+};
+const InfoLog = (...messages: string[]) => {
+  LogEmptyLines(1);
+  for (const message of messages) {
+    console.log(chalk.blue(message));
+  }
 };
 const HeaderLog = (message: string) => {
+  LogEmptyLines(2);
   console.log(chalk.bold.underline(message));
 };
+const SubHeaderLog = (message: string) => {
+  LogEmptyLines(1);
+  console.log(chalk.bold(message));
+  LogEmptyLines(1);
+};
 
-HeaderLog(
-  chalk.bold.bgWhite.black(
-    "Create an npm package boilerplate with strap-package",
-  ),
-);
+const FormattedSettings = (
+  settingsObject: Record<string, string | boolean>,
+) => {
+  return JSON.stringify(settingsObject, null, 2);
+};
 
-const asyncLookup = promisify(lookup);
+const Naming = async (shouldCheck: boolean): Promise<string> => {
+  const name = await input({
+    message: "What is the desired name of the package?",
+    default: "default-package",
+  });
+  if (shouldCheck) {
+    InfoLog("Checking if the package name is valid...");
+    const { validForNewPackages, errors, warnings } = validate(name); // check for name validity
+    if (!validForNewPackages) {
+      ErrorLog("Invalid package name for new package!");
+      if (errors) {
+        ErrorLog("Errors:", ...errors);
+      }
+      if (warnings) {
+        WarningLog("Warnings:", ...warnings);
+      }
+      InfoLog("Try another name...");
+      return await Naming(shouldCheck);
+    }
+    SuccessLog("Selected package name is valid");
+    // check for name availability
+    InfoLog("Checking if the package name is available...");
+    if (
+      (await (await fetch(`http://registry.npmjs.org/${name}`)).json()).name
+    ) {
+      ErrorLog("Package name already taken!");
+      InfoLog(`See https://www.npmjs.com/package/${name}`);
+      InfoLog("Try another name...");
+      return await Naming(shouldCheck);
+    }
+    SuccessLog("Selected package name is available");
+  }
+  // all is fine, set the selected name to the Settings object
+  return name;
+};
+
 (async () => {
   try {
+    HeaderLog(
+      chalk.bold.bgWhite.black(
+        "Create an npm package boilerplate with strap-package",
+      ),
+    );
     // first goes the online check
     const checkIfOnline = async () => {
       try {
@@ -53,17 +115,15 @@ const asyncLookup = promisify(lookup);
     if (currentNodeVersion !== LTSNodeVersion) {
       // if not LTS then ask to use LTS node
       ErrorLog(
-        "You are running Node " +
-          currentNodeVersion +
-          "\n" +
-          "Strap package requires LTS Node to be used. \n" +
-          "Currently the LTS version is " +
-          LTSNodeVersion +
-          "\nPlease update your version of Node.",
+        `You are running Node ${currentNodeVersion}`,
+        "Strap-package requires LTS Node to be used.",
+        `Currently the LTS version is ${LTSNodeVersion}`,
+        "Please update your version of Node.",
       );
       process.exit(1);
     }
-    SuccessLog("You are running Node " + currentNodeVersion + " which is LTS");
+    SuccessLog("You are running Node", currentNodeVersion, "which is LTS");
+    // these are not changeable
     const UnchangeableDefaults = {
       path: process.cwd(),
       packageManager: "npm",
@@ -73,7 +133,7 @@ const asyncLookup = promisify(lookup);
       linter: "eslint",
       formatter: "prettier",
     };
-    // gathering info
+    // then the changeable settings
     const Settings = {
       name: "default-package",
       target: "both",
@@ -85,12 +145,8 @@ const asyncLookup = promisify(lookup);
       shouldIncludeDevelopmentReadme: true,
       shouldIncludeGenericIgnoreFiles: true,
     };
-    const FormattedSettings = (
-      settingsObject: typeof Settings | typeof UnchangeableDefaults,
-    ) => {
-      return JSON.stringify(settingsObject, null, 2);
-    };
-    InfoLog("Before naming the package:");
+
+    SubHeaderLog("Before naming the package:");
     const shouldCheckPackageNameAvailability = await confirm({
       message:
         "Do you want to check if the package name is available on npm and is valid?",
@@ -104,46 +160,11 @@ const asyncLookup = promisify(lookup);
         "Be ware that the package name might not be valid or could already be taken...",
       );
     }
-    const Naming = async (shouldCheck: boolean) => {
-      const name = await input({
-        message: "What is the desired name of the package?",
-        default: "default-package",
-      });
-      if (shouldCheck) {
-        InfoLog("Checking if the package name is valid...");
-        const { validForNewPackages, errors, warnings } = validate(name); // check for name validity
-        if (!validForNewPackages) {
-          ErrorLog("Invalid package name for new package!");
-          if (errors) {
-            ErrorLog("Errors:" + errors);
-          }
-          if (warnings) {
-            WarningLog("Warnings:" + warnings);
-          }
-          InfoLog("Try another name...");
-          return await Naming(shouldCheck);
-        }
-        SuccessLog("Selected package name is valid");
-        // check for name availability
-        InfoLog("Checking if the package name is available...");
-        if (
-          (await (await fetch(`http://registry.npmjs.org/${name}`)).json()).name
-        ) {
-          ErrorLog("Package name already taken!");
-          InfoLog(`See https://www.npmjs.com/package/${name}`);
-          InfoLog("Try another name...");
-          return await Naming(shouldCheck);
-        }
-        SuccessLog("Selected package name is available");
-      }
-      // all is fine, set the selected name to the Settings object
-      Settings.name = name;
-    };
 
-    await Naming(shouldCheckPackageNameAvailability);
+    Settings.name = await Naming(shouldCheckPackageNameAvailability);
 
     // use defaults or select specific settings
-    HeaderLog("Choosing settings");
+    SubHeaderLog("Choosing settings:");
     WarningLog("Notice! The following settings are not customizable:");
     InfoLog(FormattedSettings(UnchangeableDefaults));
     WarningLog("The project will always have these tools set up");
@@ -165,24 +186,25 @@ const asyncLookup = promisify(lookup);
       process.exit(1);
     }
     SuccessLog("Default setup is approved. Choose the customizable settings.");
-    InfoLog("Default settings are:");
+    InfoLog("Default customizable settings are:");
     InfoLog(FormattedSettings(Settings));
     const shouldUseDefaults = await confirm({
-      message: "Do you want to use default settings?",
+      message: "Do you want to use default customizable settings?",
       default: true,
     });
+    // if the user wants to change default customizable settings
+    // then ask to select the settings
     if (!shouldUseDefaults) {
-      InfoLog("The package could be targeting Node, Browser or both");
+      SubHeaderLog("Choose customizable settings:");
       InfoLog(
+        "The package could be targeting Node, Browser or both",
         "Selecting specific platform allows for using specific platform APIs",
-      );
-      InfoLog("Like crypto, fs, path, os, etc. in Node");
-      InfoLog("Or window object etc. in Browser");
-      InfoLog(
+        "Like crypto, fs, path, os, etc. in Node",
+        "Or window object etc. in Browser",
         "If the package is intended to be used in both environments, then choose 'both'",
       );
       WarningLog(
-        "In this case the used APIs should be available both in Node and Browser",
+        "In the 'both' case the used APIs should be available both in Node and Browser",
       );
       WarningLog(
         "So be careful and check if the used APIs are available in both environments",
@@ -200,8 +222,8 @@ const asyncLookup = promisify(lookup);
       });
       InfoLog(
         "MIT license allows others to use/modify etc. your package free of charge",
+        "See more info at https://choosealicense.com/licenses/mit/",
       );
-      InfoLog("See full license at https://choosealicense.com/licenses/mit/");
       Settings.shouldIncludeMITLicense = await confirm({
         message: "Do you want to include MIT license?",
         default: true,
@@ -215,11 +237,9 @@ const asyncLookup = promisify(lookup);
         default: true,
       });
 
-      InfoLog("Including npm publish workflow for publishing to npm registry");
       InfoLog(
-        "Adds a simple workflow which is used by github actions to publish the package to npm registry",
-      );
-      InfoLog(
+        "Including npm publish workflow for publishing to npm registry",
+        "adds a simple workflow which is used by github actions to publish the package to npm registry",
         "Additional info is going to be generated in the README.dev.md file if the selected settings allow for this file to be included",
       );
       Settings.shouldIncludeNPMPublishWorkflow = await confirm({
@@ -229,8 +249,6 @@ const asyncLookup = promisify(lookup);
 
       InfoLog(
         "Including README.md file will add this file along with some generic sections",
-      );
-      InfoLog(
         "Such file usually contains information about the package like how to install and use it etc.",
       );
       Settings.shouldIncludeReadme = await confirm({
@@ -240,8 +258,6 @@ const asyncLookup = promisify(lookup);
 
       InfoLog(
         "Including DEV.README.md file will add this file along with some generic sections",
-      );
-      InfoLog(
         "Such file usually contains development information like how to build, test, run etc.",
       );
       Settings.shouldIncludeDevelopmentReadme = await confirm({
@@ -250,8 +266,6 @@ const asyncLookup = promisify(lookup);
       });
       InfoLog(
         "Including generic ignore files will add files like .gitignore and .npmignore",
-      );
-      InfoLog(
         "Such files usually contain information about files to be ignored by git and npm etc.",
       );
       Settings.shouldIncludeGenericIgnoreFiles = await confirm({
@@ -259,11 +273,10 @@ const asyncLookup = promisify(lookup);
         default: true,
       });
     }
-    SuccessLog(
-      "Selected settings:\n" +
-        FormattedSettings({ ...UnchangeableDefaults, ...Settings }),
-    );
-    InfoLog("Initializing the package in the current directory...");
+    const MergedSettings = { ...UnchangeableDefaults, ...Settings };
+    SuccessLog("DONE! Selected settings:");
+    InfoLog(FormattedSettings(MergedSettings));
+    SubHeaderLog("Initializing the package in the current directory...");
     // executing commands to install all the dependencies
     // and setup the package skeleton
     // should use single exec command after all the data has been collected
@@ -280,12 +293,12 @@ const asyncLookup = promisify(lookup);
     //     const installLTSNodeString = `nvm install --lts`;
     //     console.log("Enabling NVM and installing LTS node...");
     //     const { stdout } = await asyncExec(
-    //       enableNVMString + " " + installLTSNodeString,
+    //       enableNVMString , " " , installLTSNodeString,
     //     );
     //     console.log(stdout);
     //     console.log("Installing LTS node... done");
     //     console.log(
-    //       "Current node version: " +
+    //       "Current node version: " ,
     //         JSON.stringify(await asyncExec("node --version")),
     //     );
     //   } catch (error) {
@@ -294,6 +307,6 @@ const asyncLookup = promisify(lookup);
     //     process.exit(1);
     //   }
   } catch {
-    // the error handling from CTRL+C
+    // the error handling from CTRL,C
   }
 })();
