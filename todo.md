@@ -1,1 +1,0 @@
-- if the target of the package is nodejs or other similar platform => can't use vite bundler

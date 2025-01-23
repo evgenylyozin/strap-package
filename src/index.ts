@@ -2,9 +2,80 @@
 import { confirm, select, input } from "@inquirer/prompts";
 import { promisify } from "util";
 import { lookup } from "dns";
+import { exec } from "child_process";
 import * as validate from "validate-npm-package-name";
 import chalk from "chalk";
 const asyncLookup = promisify(lookup);
+const asyncExec = promisify(exec);
+
+type ToolInfo = {
+  name: string;
+  supplementary: string[];
+  isDev: boolean;
+};
+type Setup = {
+  language: ToolInfo;
+  testRunner: ToolInfo;
+  linter: ToolInfo;
+  formatter: ToolInfo;
+  buildTool: ToolInfo;
+  hooksTool: ToolInfo;
+};
+// the tools which will be installed
+// in any case
+const FixedSetup: Setup = {
+  language: {
+    name: "typescript",
+    supplementary: [],
+    isDev: true,
+  },
+  testRunner: {
+    name: "vitest",
+    supplementary: [],
+    isDev: true,
+  },
+  linter: {
+    name: "eslint",
+    supplementary: ["@eslint/js", "typescript-eslint"],
+    isDev: true,
+  },
+  formatter: {
+    name: "prettier",
+    supplementary: [],
+    isDev: true,
+  },
+  buildTool: {
+    name: "webpack",
+    supplementary: ["ts-loader", "webpack-cli"],
+    isDev: true,
+  },
+  hooksTool: {
+    name: "husky",
+    supplementary: [],
+    isDev: true,
+  },
+};
+
+// then the changeable settings
+// mainly affect configs and additionally
+// generated files, but can remove husky from
+// the tools if needed
+type Settings = {
+  name: string;
+  target: "node" | "browser" | "both";
+  shouldInitializeGit: boolean;
+  shouldIncludeMITLicense: boolean;
+  shouldIncludeHuskyPrecommit: boolean;
+  shouldIncludeNPMPublishWorkflow: boolean;
+};
+const Settings: Settings = {
+  name: "default-package",
+  target: "both", // affects webpack target and installed types (for both it stays default)
+  shouldInitializeGit: true, // if false then .gitignore will be removed else "git init" will be run
+  shouldIncludeMITLicense: true, // if false then "LICENSE" will be removed
+  shouldIncludeHuskyPrecommit: true, // if false, then husky will be removed and .husky file too + prepare script in package.json will be removed
+  shouldIncludeNPMPublishWorkflow: true, // if false, then .github will be removed
+};
 
 const LogEmptyLines = (count: number) => {
   for (let i = 0; i < count; i++) {
@@ -43,9 +114,7 @@ const SubHeaderLog = (message: string) => {
   LogEmptyLines(1);
 };
 
-const FormattedSettings = (
-  settingsObject: Record<string, string | boolean>,
-) => {
+const FormattedSettings = (settingsObject: Record<string, unknown>) => {
   return JSON.stringify(settingsObject, null, 2);
 };
 
@@ -71,9 +140,10 @@ const Naming = async (shouldCheck: boolean): Promise<string> => {
     SuccessLog("Selected package name is valid");
     // check for name availability
     InfoLog("Checking if the package name is available...");
-    if (
-      (await (await fetch(`http://registry.npmjs.org/${name}`)).json()).name
-    ) {
+    const responseData = (await (
+      await fetch(`http://registry.npmjs.org/${name}`)
+    ).json()) as { name?: string };
+    if (responseData && responseData.name) {
       ErrorLog("Package name already taken!");
       InfoLog(`See https://www.npmjs.com/package/${name}`);
       InfoLog("Try another name...");
@@ -85,6 +155,45 @@ const Naming = async (shouldCheck: boolean): Promise<string> => {
   return name;
 };
 
+const checkGitAvailable = async () => {
+  try {
+    InfoLog("Checking if git is available...");
+    await asyncExec("which git");
+    SuccessLog("Git is available");
+  } catch {
+    ErrorLog("Git is not available");
+    InfoLog(
+      "Strap-package uses git to clone the template files so you need to have git installed",
+    );
+    process.exit(1);
+  }
+};
+const PrepareFolder = async (name: string) => {
+  const command = `mkdir ${name} && cd ${name} && git clone https://github.com/evgenylyozin/strap-package-template.git .`;
+  await asyncExec(command);
+};
+
+const assembleDependencies = (object: Setup, isDev: boolean) => {
+  const dependencies = [];
+  for (const [key, value] of Object.entries(object)) {
+    if (value.isDev === isDev) {
+      dependencies.push(key);
+    }
+  }
+  return dependencies.join(" ");
+};
+const InstallDependencies = async (folderName: string) => {
+  const devDependencies = assembleDependencies(FixedSetup, true);
+  const prodDependencies = assembleDependencies(FixedSetup, false);
+  const command = `cd ${folderName} && npm install ${devDependencies} --save-dev && npm install ${prodDependencies}`;
+  await asyncExec(command);
+};
+const AdjustPackageTemplate = async (settings: Settings) => {
+  console.log(JSON.stringify(settings, null, 2));
+  await asyncExec(
+    `cd ${settings.name} && node ./scripts/adjustPackageTemplate.js`,
+  );
+};
 (async () => {
   try {
     HeaderLog(
@@ -123,28 +232,8 @@ const Naming = async (shouldCheck: boolean): Promise<string> => {
       process.exit(1);
     }
     SuccessLog("You are running Node", currentNodeVersion, "which is LTS");
-    // these are not changeable
-    const UnchangeableDefaults = {
-      path: process.cwd(),
-      packageManager: "npm",
-      buildTool: "webpack",
-      language: "typescript",
-      testRunner: "vitest",
-      linter: "eslint",
-      formatter: "prettier",
-    };
-    // then the changeable settings
-    const Settings = {
-      name: "default-package",
-      target: "both",
-      shouldInitializeGit: true,
-      shouldIncludeMITLicense: true,
-      shouldIncludeHuskyPrecommit: true,
-      shouldIncludeNPMPublishWorkflow: true,
-      shouldIncludeReadme: true,
-      shouldIncludeDevelopmentReadme: true,
-      shouldIncludeGenericIgnoreFiles: true,
-    };
+    // check if git command is available
+    await checkGitAvailable();
 
     SubHeaderLog("Before naming the package:");
     const shouldCheckPackageNameAvailability = await confirm({
@@ -166,8 +255,8 @@ const Naming = async (shouldCheck: boolean): Promise<string> => {
     // use defaults or select specific settings
     SubHeaderLog("Choosing settings:");
     WarningLog("Notice! The following settings are not customizable:");
-    InfoLog(FormattedSettings(UnchangeableDefaults));
-    WarningLog("The project will always have these tools set up");
+    InfoLog(FormattedSettings(FixedSetup));
+    WarningLog("The project will always have these tools set up with NPM");
     WarningLog(
       "and the current working directory as a starting point to generate the boilerplate",
     );
@@ -246,67 +335,45 @@ const Naming = async (shouldCheck: boolean): Promise<string> => {
         message: "Do you want to include npm publish workflow?",
         default: true,
       });
-
-      InfoLog(
-        "Including README.md file will add this file along with some generic sections",
-        "Such file usually contains information about the package like how to install and use it etc.",
-      );
-      Settings.shouldIncludeReadme = await confirm({
-        message: "Do you want to include README.md file?",
-        default: true,
-      });
-
-      InfoLog(
-        "Including DEV.README.md file will add this file along with some generic sections",
-        "Such file usually contains development information like how to build, test, run etc.",
-      );
-      Settings.shouldIncludeDevelopmentReadme = await confirm({
-        message: "Do you want to include development README.md file?",
-        default: true,
-      });
-      InfoLog(
-        "Including generic ignore files will add files like .gitignore and .npmignore",
-        "Such files usually contain information about files to be ignored by git and npm etc.",
-      );
-      Settings.shouldIncludeGenericIgnoreFiles = await confirm({
-        message: "Do you want to include generic ignore files?",
-        default: true,
-      });
     }
-    const MergedSettings = { ...UnchangeableDefaults, ...Settings };
     SuccessLog("DONE! Selected settings:");
-    InfoLog(FormattedSettings(MergedSettings));
+    InfoLog(FormattedSettings(Settings));
     SubHeaderLog("Initializing the package in the current directory...");
     // executing commands to install all the dependencies
     // and setup the package skeleton
     // should use single exec command after all the data has been collected
-    // else the nvm is not available in other shell or node version is not the needed one
-    //   try {
-    //     console.log("Installing NVM...");
-    //     await asyncExec(nvmInstallString);
-    //     const enableNVMString = `
-    //     unset npm_config_prefix # required for nvm install if fnm is installed
-    //     export NVM_DIR="$HOME/.nvm"
-    //     [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"  # This loads nvm
-    //     [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-    // `;
-    //     const installLTSNodeString = `nvm install --lts`;
-    //     console.log("Enabling NVM and installing LTS node...");
-    //     const { stdout } = await asyncExec(
-    //       enableNVMString , " " , installLTSNodeString,
-    //     );
-    //     console.log(stdout);
-    //     console.log("Installing LTS node... done");
-    //     console.log(
-    //       "Current node version: " ,
-    //         JSON.stringify(await asyncExec("node --version")),
-    //     );
-    //   } catch (error) {
-    //     console.error("Failed to install NVM...");
-    //     console.error(error);
-    //     process.exit(1);
-    //   }
+    // make the folder with the name of the package
+    // then copy the ./template folder contents to the new folder
+
+    try {
+      // copy all the template files to the new folder with the name of the package
+      await PrepareFolder(Settings.name);
+      // then install all the dependencies
+      await InstallDependencies(Settings.name);
+      // then adjust the package template according to the settings
+      // removing some files if needed, reinstalling dependencies
+      // etc.
+      await AdjustPackageTemplate(Settings);
+    } catch (e) {
+      const errorMessage =
+        e instanceof Error
+          ? e.message
+          : e instanceof String
+            ? e.toString()
+            : "Unknown error";
+      ErrorLog(
+        "Something went wrong while initializing the package in the current directory",
+        errorMessage,
+      );
+      process.exit(1);
+    }
+
+    SuccessLog("Successfully initialized the package in the current directory");
+    InfoLog(
+      "The TODO.md file was included",
+      "Go over it to finalize the setup",
+    );
   } catch {
     // the error handling from CTRL,C
   }
-})();
+})().catch(() => {});

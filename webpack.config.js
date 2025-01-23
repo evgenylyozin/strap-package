@@ -1,4 +1,3 @@
-// webpack.config.js
 const path = require("path");
 const ShebangPlugin = require("webpack-shebang-plugin");
 
@@ -13,7 +12,9 @@ module.exports = {
       },
     ],
   },
-  plugins: [new ShebangPlugin()], // ENSURE THE SHEBANG IS IN THE OUTPUT AND THE FILE IS EXECUTABLE
+  plugins: [
+    new ShebangPlugin(), // ENSURE THE SHEBANG IS IN THE OUTPUT AND THE FILE IS EXECUTABLE
+  ],
   resolve: {
     extensions: [".ts", ".js"],
   },
@@ -22,5 +23,4 @@ module.exports = {
     filename: "index.js",
     path: path.resolve(__dirname, "dist"),
   },
-  // Additional configuration goes here
 };
