@@ -250,8 +250,10 @@ const ModifyTargetInWebpackConfig = async (
   await writeFile(webpackConfigPath, newWebpackConfig);
 };
 const InstallTypesForNodeTarget = async (name: string) => {
+  InfoLog("Installing @types/node...");
   const command = `cd ${name} && npm install @types/node --save-dev`;
   await asyncExec(command);
+  SuccessLog("Successfully installed @types/node");
 };
 const AdjustPackageTemplateForTarget = async (
   name: string,
@@ -276,8 +278,10 @@ const RemoveHuskyFolder = async (name: string) => {
   await asyncExec(command);
 };
 const UninstallHusky = async (name: string) => {
+  InfoLog("Uninstalling husky...");
   const command = `cd ${name} && npm remove husky`;
   await asyncExec(command);
+  SuccessLog("Successfully uninstalled husky");
 };
 const MakeTemplateWithoutHusky = async (name: string) => {
   await RemoveHuskyFolder(name);
