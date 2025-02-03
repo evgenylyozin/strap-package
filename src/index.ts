@@ -3,6 +3,7 @@ import { confirm, select, input } from "@inquirer/prompts";
 import { promisify } from "util";
 import { lookup } from "dns";
 import { exec } from "child_process";
+import { readFile, writeFile } from "fs/promises";
 import * as validate from "validate-npm-package-name";
 import chalk from "chalk";
 const asyncLookup = promisify(lookup);
@@ -175,9 +176,12 @@ const PrepareFolder = async (name: string) => {
 
 const assembleDependencies = (object: Setup, isDev: boolean) => {
   const dependencies = [];
-  for (const [key, value] of Object.entries(object)) {
+  for (const [, value] of Object.entries(object)) {
     if (value.isDev === isDev) {
-      dependencies.push(key);
+      dependencies.push(value.name);
+      for (const supplementary of value.supplementary) {
+        dependencies.push(supplementary);
+      }
     }
   }
   return dependencies.join(" ");
@@ -188,11 +192,84 @@ const InstallDependencies = async (folderName: string) => {
   const command = `cd ${folderName} && npm install ${devDependencies} --save-dev && npm install ${prodDependencies}`;
   await asyncExec(command);
 };
-const AdjustPackageTemplate = async (settings: Settings) => {
-  console.log(JSON.stringify(settings, null, 2));
-  await asyncExec(
-    `cd ${settings.name} && node ./scripts/adjustPackageTemplate.js`,
+const ModifyTargetInWebpackConfig = async (target: "node" | "browser") => {
+  const webpackConfigPath = "./webpack.config.js";
+  const webpackConfig = (await readFile(webpackConfigPath)).toString();
+  const newWebpackConfig = webpackConfig.replace(
+    /target: false/g,
+    `target: "${target}"`,
   );
+  await writeFile(webpackConfigPath, newWebpackConfig);
+};
+const InstallTypesForNodeTarget = async (name: string) => {
+  const command = `cd ${name} && npm install @types/node --save-dev`;
+  await asyncExec(command);
+};
+const AdjustPackageTemplateForTarget = async (
+  name: string,
+  target: "node" | "browser" | "both",
+) => {
+  if (target === "both") return;
+  await ModifyTargetInWebpackConfig(target);
+  if (target === "node") await InstallTypesForNodeTarget(name);
+};
+const RemovePrepareScriptFromPackageJson = async (name: string) => {
+  const packageJsonPath = `${name}/package.json`;
+  const packageJson = JSON.parse(
+    (await readFile(packageJsonPath)).toString(),
+  ) as {
+    scripts: Record<string, string>;
+  };
+  delete packageJson.scripts.prepare;
+  await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
+};
+const RemoveHuskyFolder = async (name: string) => {
+  const command = `cd ${name} && rm -rf .husky`;
+  await asyncExec(command);
+};
+const UninstallHusky = async (name: string) => {
+  const command = `cd ${name} && npm remove husky`;
+  await asyncExec(command);
+};
+const MakeTemplateWithoutHusky = async (name: string) => {
+  await RemoveHuskyFolder(name);
+  await RemovePrepareScriptFromPackageJson(name);
+  await UninstallHusky(name);
+};
+const MakeTemplateWithoutMITLicense = async (name: string) => {
+  const licensePath = `${name}/LICENSE`;
+  await asyncExec(`rm ${licensePath}`);
+};
+const MakeTemplateWithoutNPMPublishWorkflow = async (name: string) => {
+  const githubPath = `${name}/.github`;
+  await asyncExec(`rm -rf ${githubPath}`);
+};
+const InitializeGit = async (name: string) => {
+  const command = `cd ${name} && git init`;
+  await asyncExec(command);
+};
+const AdjustPackageTemplate = async (settings: Settings) => {
+  const {
+    name,
+    target,
+    shouldIncludeHuskyPrecommit,
+    shouldIncludeMITLicense,
+    shouldIncludeNPMPublishWorkflow,
+    shouldInitializeGit,
+  } = settings;
+  await AdjustPackageTemplateForTarget(name, target);
+  if (!shouldIncludeHuskyPrecommit) {
+    await MakeTemplateWithoutHusky(name);
+  }
+  if (!shouldIncludeMITLicense) {
+    await MakeTemplateWithoutMITLicense(name);
+  }
+  if (!shouldIncludeNPMPublishWorkflow) {
+    await MakeTemplateWithoutNPMPublishWorkflow(name);
+  }
+  if (shouldInitializeGit) {
+    await InitializeGit(name);
+  }
 };
 (async () => {
   try {
@@ -374,6 +451,6 @@ const AdjustPackageTemplate = async (settings: Settings) => {
       "Go over it to finalize the setup",
     );
   } catch {
-    // the error handling from CTRL,C
+    // the error handling from CTRL+C
   }
 })().catch(() => {});
