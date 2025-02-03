@@ -170,7 +170,7 @@ const checkGitAvailable = async () => {
   }
 };
 const PrepareFolder = async (name: string) => {
-  const command = `mkdir ${name} && cd ${name} && git clone https://github.com/evgenylyozin/strap-package-template.git .`;
+  const command = `mkdir ${name} && cd ${name} && git clone --depth=1 https://github.com/evgenylyozin/strap-package-template.git . && rm -rf .git`;
   await asyncExec(command);
 };
 
