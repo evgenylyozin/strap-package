@@ -63,6 +63,7 @@ const FixedSetup: Setup = {
 // the tools if needed
 type Settings = {
   name: string;
+  isPrivate: boolean;
   target: "node" | "browser";
   shouldInitializeGit: boolean;
   shouldIncludeMITLicense: boolean;
@@ -71,6 +72,7 @@ type Settings = {
 };
 const Settings: Settings = {
   name: "default-package",
+  isPrivate: false, // is the package should be considered private or not, affects package.json and the publish workflow
   target: "node", // affects webpack target and installed types
   shouldInitializeGit: true, // if false then .gitignore will be removed else "git init" will be run
   shouldIncludeMITLicense: true, // if false then "LICENSE" will be removed
@@ -295,6 +297,15 @@ const MakeTemplateWithoutMITLicense = async (name: string) => {
 const MakeTemplateWithoutNPMPublishWorkflow = async (name: string) => {
   const githubPath = `${name}/.github`;
   await asyncExec(`rm -rf ${githubPath}`);
+  // then adjust the publish script in package.json
+  const packageJsonPath = `${name}/package.json`;
+  const packageJson = JSON.parse(
+    (await readFile(packageJsonPath)).toString(),
+  ) as {
+    scripts: Record<string, string>;
+  };
+  packageJson.scripts.publish = "npm publish --access public";
+  await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
 };
 const InitializeGit = async (name: string) => {
   const command = `cd ${name} && git init`;
@@ -304,35 +315,77 @@ const RunHuskyPrepareScript = async (name: string) => {
   const command = `cd ${name} && npm run prepare`;
   await asyncExec(command);
 };
+const ReturnFolderNameAndPackageName = (name: string) => {
+  const folderName = name.startsWith("@") ? name.split("/")[1] : name;
+  return { folderName, packageName: name };
+};
+const MakeTemplatePrivate = async (name: string) => {
+  InfoLog("Making package private...");
+  const packageJsonPath = `${name}/package.json`;
+  const packageJson = JSON.parse(
+    (await readFile(packageJsonPath)).toString(),
+  ) as {
+    scripts: Record<string, string>;
+  };
+  packageJson.scripts.publish = "npm publish";
+  await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
+};
+const AdjustPackageTemplateForName = async (
+  packageFolder: string,
+  packageName: string,
+) => {
+  InfoLog("Adjusting package template to use the package name...");
+  // set the name of the package in package.json
+  const packageJsonPath = `${packageFolder}/package.json`;
+  const packageJson = JSON.parse(
+    (await readFile(packageJsonPath)).toString(),
+  ) as {
+    name: string;
+  };
+  packageJson.name = packageName;
+  await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
+  // then change the [PACKAGE NAME] in README.md
+  const readmePath = `${packageFolder}/README.md`;
+  const readme = (await readFile(readmePath)).toString();
+  const newReadme = readme.replace("[PACKAGE NAME]", packageName);
+  await writeFile(readmePath, newReadme);
+};
 const AdjustPackageTemplate = async (settings: Settings) => {
   const {
     name,
+    isPrivate,
     target,
     shouldIncludeHuskyPrecommit,
     shouldIncludeMITLicense,
     shouldIncludeNPMPublishWorkflow,
     shouldInitializeGit,
   } = settings;
+  const { folderName, packageName } = ReturnFolderNameAndPackageName(name);
+
   InfoLog("Adjusting package template...");
-  await AdjustPackageTemplateForTarget(name, target);
+  await AdjustPackageTemplateForName(folderName, packageName);
+  await AdjustPackageTemplateForTarget(folderName, target);
   if (!shouldIncludeMITLicense) {
     InfoLog("Removing MIT license...");
-    await MakeTemplateWithoutMITLicense(name);
+    await MakeTemplateWithoutMITLicense(folderName);
   }
   if (!shouldIncludeNPMPublishWorkflow) {
     InfoLog("Removing npm publish workflow...");
-    await MakeTemplateWithoutNPMPublishWorkflow(name);
+    await MakeTemplateWithoutNPMPublishWorkflow(folderName); // here the publish script is adjusted and includes public access
+  }
+  if (isPrivate) {
+    await MakeTemplatePrivate(folderName); // if private, make it just npm publish (scoped are private by default)
   }
   if (shouldInitializeGit) {
     InfoLog("Initializing git...");
-    await InitializeGit(name);
+    await InitializeGit(folderName);
   }
   if (!shouldIncludeHuskyPrecommit) {
     InfoLog("Removing husky precommit...");
-    await MakeTemplateWithoutHusky(name);
+    await MakeTemplateWithoutHusky(folderName);
   } else {
     InfoLog("Running husky prepare script...");
-    await RunHuskyPrepareScript(name);
+    await RunHuskyPrepareScript(folderName);
   }
 };
 (async () => {
@@ -377,6 +430,15 @@ const AdjustPackageTemplate = async (settings: Settings) => {
     await checkGitAvailable();
 
     SubHeaderLog("Before naming the package:");
+    WarningLog(
+      "If you want to make a scoped package, then prefix its name with the needed scope",
+    );
+    WarningLog(
+      "like @scope/package-name where the @scope part could be your npm username or company name",
+    );
+    WarningLog(
+      "NOTICE! unscoped packages are always public, so for private packages you must add some scope",
+    );
     const shouldCheckPackageNameAvailability = await confirm({
       message:
         "Do you want to check if the package name is available on npm and is valid?",
@@ -416,16 +478,28 @@ const AdjustPackageTemplate = async (settings: Settings) => {
       process.exit(1);
     }
     SuccessLog("Default setup is approved. Choose the customizable settings.");
-    InfoLog("Default customizable settings are:");
+    InfoLog("Customizable settings are (with defaults):");
     InfoLog(FormattedSettings(Settings));
     const shouldUseDefaults = await confirm({
-      message: "Do you want to use default customizable settings?",
+      message: "Do you want to use default values for customizable settings?",
       default: true,
     });
     // if the user wants to change default customizable settings
     // then ask to select the settings
     if (!shouldUseDefaults) {
       SubHeaderLog("Choose customizable settings:");
+      if (Settings.name.startsWith("@")) {
+        InfoLog("Since you chose a scoped package name");
+        InfoLog("The package could be private or public");
+        WarningLog("The default is public");
+        InfoLog(
+          "Public packages are available to be installed and used by anyone",
+        );
+        Settings.isPrivate = await confirm({
+          message: "Make the package private?",
+          default: false,
+        });
+      }
       InfoLog(
         "The package could be targeting Node, Browser or both",
         "Selecting specific platform allows for using specific platform APIs",
@@ -487,10 +561,11 @@ const AdjustPackageTemplate = async (settings: Settings) => {
     // then copy the ./template folder contents to the new folder
 
     try {
+      const { folderName } = ReturnFolderNameAndPackageName(Settings.name);
       // copy all the template files to the new folder with the name of the package
-      await PrepareFolder(Settings.name);
+      await PrepareFolder(folderName);
       // then install all the dependencies
-      await InstallDependencies(Settings.name);
+      await InstallDependencies(folderName);
       // then adjust the package template according to the settings
       // removing some files if needed, reinstalling dependencies
       // etc.
