@@ -2,7 +2,7 @@
 import { confirm, select, input } from "@inquirer/prompts";
 import { promisify } from "util";
 import { lookup } from "dns";
-import { exec } from "child_process";
+import { exec, spawn } from "child_process";
 import { readFile, writeFile } from "fs/promises";
 import * as validate from "validate-npm-package-name";
 import chalk from "chalk";
@@ -115,8 +115,20 @@ const SubHeaderLog = (message: string) => {
   LogEmptyLines(1);
 };
 
-const FormattedSettings = (settingsObject: Record<string, unknown>) => {
-  return JSON.stringify(settingsObject, null, 2);
+const IsSetup = (s: Settings | Setup): s is Setup => {
+  return "language" in s;
+};
+const FormattedSettings = (settingsObject: Settings | Setup) => {
+  const s = {
+    ...settingsObject,
+  };
+  if (IsSetup(s)) {
+    // format the setup more concisely
+    for (const [key, value] of Object.entries(s)) {
+      s[key] = value.name;
+    }
+  }
+  return JSON.stringify(s, null, 2);
 };
 
 const Naming = async (shouldCheck: boolean): Promise<string> => {
@@ -169,13 +181,15 @@ const checkGitAvailable = async () => {
     process.exit(1);
   }
 };
+
 const PrepareFolder = async (name: string) => {
+  InfoLog("Preparing folder for the package...");
   const command = `mkdir ${name} && cd ${name} && git clone --depth=1 https://github.com/evgenylyozin/strap-package-template.git . && rm -rf .git`;
   await asyncExec(command);
 };
 
 const assembleDependencies = (object: Setup, isDev: boolean) => {
-  const dependencies = [];
+  const dependencies: string[] = [];
   for (const [, value] of Object.entries(object)) {
     if (value.isDev === isDev) {
       dependencies.push(value.name);
@@ -184,13 +198,44 @@ const assembleDependencies = (object: Setup, isDev: boolean) => {
       }
     }
   }
-  return dependencies.join(" ");
+  return dependencies;
+};
+const Install = (folderName: string, dependencies: string[]) => {
+  return new Promise((resolve, reject) => {
+    const c = spawn(
+      "npm",
+      ["install", ...dependencies, "--save-dev", "--progress"],
+      { stdio: "inherit", cwd: folderName },
+    );
+    c.on("close", (code) => {
+      if (code === 0) {
+        SuccessLog(`Successfully installed ${dependencies.join(", ")}`);
+        resolve(code);
+      } else {
+        reject(
+          new Error(
+            `Failed to install ${dependencies.join(", ")}, exit code: ${code}`,
+          ),
+        );
+      }
+    });
+    c.on("error", (error) => {
+      reject(error);
+    });
+  });
 };
 const InstallDependencies = async (folderName: string) => {
   const devDependencies = assembleDependencies(FixedSetup, true);
   const prodDependencies = assembleDependencies(FixedSetup, false);
-  const command = `cd ${folderName} && npm install ${devDependencies} --save-dev && npm install ${prodDependencies}`;
-  await asyncExec(command);
+  InfoLog("Installing dependencies...");
+  if (devDependencies.length > 0) {
+    InfoLog(`Installing development dependencies...`);
+    await Install(folderName, devDependencies);
+  }
+  if (prodDependencies.length > 0) {
+    InfoLog(`Installing production dependencies...`);
+    await Install(folderName, prodDependencies);
+  }
 };
 const ModifyTargetInWebpackConfig = async (
   name: string,
@@ -213,6 +258,7 @@ const AdjustPackageTemplateForTarget = async (
   target: "node" | "browser" | "both",
 ) => {
   if (target === "both") return;
+  InfoLog("Adjusting webpack config...");
   await ModifyTargetInWebpackConfig(name, target);
   if (target === "node") await InstallTypesForNodeTarget(name);
 };
@@ -260,17 +306,22 @@ const AdjustPackageTemplate = async (settings: Settings) => {
     shouldIncludeNPMPublishWorkflow,
     shouldInitializeGit,
   } = settings;
+  InfoLog("Adjusting package template...");
   await AdjustPackageTemplateForTarget(name, target);
   if (!shouldIncludeHuskyPrecommit) {
+    InfoLog("Removing husky precommit...");
     await MakeTemplateWithoutHusky(name);
   }
   if (!shouldIncludeMITLicense) {
+    InfoLog("Removing MIT license...");
     await MakeTemplateWithoutMITLicense(name);
   }
   if (!shouldIncludeNPMPublishWorkflow) {
+    InfoLog("Removing npm publish workflow...");
     await MakeTemplateWithoutNPMPublishWorkflow(name);
   }
   if (shouldInitializeGit) {
+    InfoLog("Initializing git...");
     await InitializeGit(name);
   }
 };
@@ -450,8 +501,8 @@ const AdjustPackageTemplate = async (settings: Settings) => {
 
     SuccessLog("Successfully initialized the package in the current directory");
     InfoLog(
-      "The TODO.md file was included",
-      "Go over it to finalize the setup",
+      chalk.bold.underline("The TODO.md file was included"),
+      chalk.bold.underline("Go over it to finalize the setup"),
     );
   } catch {
     // the error handling from CTRL+C
