@@ -300,6 +300,10 @@ const InitializeGit = async (name: string) => {
   const command = `cd ${name} && git init`;
   await asyncExec(command);
 };
+const RunHuskyPrepareScript = async (name: string) => {
+  const command = `cd ${name} && npm run prepare`;
+  await asyncExec(command);
+};
 const AdjustPackageTemplate = async (settings: Settings) => {
   const {
     name,
@@ -311,10 +315,6 @@ const AdjustPackageTemplate = async (settings: Settings) => {
   } = settings;
   InfoLog("Adjusting package template...");
   await AdjustPackageTemplateForTarget(name, target);
-  if (!shouldIncludeHuskyPrecommit) {
-    InfoLog("Removing husky precommit...");
-    await MakeTemplateWithoutHusky(name);
-  }
   if (!shouldIncludeMITLicense) {
     InfoLog("Removing MIT license...");
     await MakeTemplateWithoutMITLicense(name);
@@ -326,6 +326,13 @@ const AdjustPackageTemplate = async (settings: Settings) => {
   if (shouldInitializeGit) {
     InfoLog("Initializing git...");
     await InitializeGit(name);
+  }
+  if (!shouldIncludeHuskyPrecommit) {
+    InfoLog("Removing husky precommit...");
+    await MakeTemplateWithoutHusky(name);
+  } else {
+    InfoLog("Running husky prepare script...");
+    await RunHuskyPrepareScript(name);
   }
 };
 (async () => {
