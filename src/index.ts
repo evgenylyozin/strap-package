@@ -63,7 +63,7 @@ const FixedSetup: Setup = {
 // the tools if needed
 type Settings = {
   name: string;
-  target: "node" | "browser" | "both";
+  target: "node" | "browser";
   shouldInitializeGit: boolean;
   shouldIncludeMITLicense: boolean;
   shouldIncludeHuskyPrecommit: boolean;
@@ -71,7 +71,7 @@ type Settings = {
 };
 const Settings: Settings = {
   name: "default-package",
-  target: "both", // affects webpack target and installed types (for both it stays default)
+  target: "node", // affects webpack target and installed types
   shouldInitializeGit: true, // if false then .gitignore will be removed else "git init" will be run
   shouldIncludeMITLicense: true, // if false then "LICENSE" will be removed
   shouldIncludeHuskyPrecommit: true, // if false, then husky will be removed and .husky file too + prepare script in package.json will be removed
@@ -255,9 +255,8 @@ const InstallTypesForNodeTarget = async (name: string) => {
 };
 const AdjustPackageTemplateForTarget = async (
   name: string,
-  target: "node" | "browser" | "both",
+  target: "node" | "browser",
 ) => {
-  if (target === "both") return;
   InfoLog("Adjusting webpack config...");
   await ModifyTargetInWebpackConfig(name, target);
   if (target === "node") await InstallTypesForNodeTarget(name);
@@ -421,7 +420,7 @@ const AdjustPackageTemplate = async (settings: Settings) => {
         "Selecting specific platform allows for using specific platform APIs",
         "Like crypto, fs, path, os, etc. in Node",
         "Or window object etc. in Browser",
-        "If the package is intended to be used in both environments, then choose 'both'",
+        "If the package is intended to be used in both environments, then choose 'Browser' to not install additional types for Node",
       );
       WarningLog(
         "In the 'both' case the used APIs should be available both in Node and Browser",
@@ -429,10 +428,10 @@ const AdjustPackageTemplate = async (settings: Settings) => {
       WarningLog(
         "So be careful and check if the used APIs are available in both environments",
       );
-      Settings.target = await select<"node" | "browser" | "both">({
+      Settings.target = await select<"node" | "browser">({
         message: "Choose the target for the package",
-        choices: ["node", "browser", "both"],
-        default: "both",
+        choices: ["node", "browser"],
+        default: "node",
       });
 
       InfoLog("Initializing the git repository is done with just 'git init'");
