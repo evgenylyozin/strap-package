@@ -192,12 +192,15 @@ const InstallDependencies = async (folderName: string) => {
   const command = `cd ${folderName} && npm install ${devDependencies} --save-dev && npm install ${prodDependencies}`;
   await asyncExec(command);
 };
-const ModifyTargetInWebpackConfig = async (target: "node" | "browser") => {
-  const webpackConfigPath = "./webpack.config.js";
+const ModifyTargetInWebpackConfig = async (
+  name: string,
+  target: "node" | "browser",
+) => {
+  const webpackConfigPath = `${name}/webpack.config.js`;
   const webpackConfig = (await readFile(webpackConfigPath)).toString();
   const newWebpackConfig = webpackConfig.replace(
-    /target: false/g,
-    `target: "${target}"`,
+    /target: false,/g,
+    `target: "${target}",`,
   );
   await writeFile(webpackConfigPath, newWebpackConfig);
 };
@@ -210,7 +213,7 @@ const AdjustPackageTemplateForTarget = async (
   target: "node" | "browser" | "both",
 ) => {
   if (target === "both") return;
-  await ModifyTargetInWebpackConfig(target);
+  await ModifyTargetInWebpackConfig(name, target);
   if (target === "node") await InstallTypesForNodeTarget(name);
 };
 const RemovePrepareScriptFromPackageJson = async (name: string) => {
