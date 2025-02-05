@@ -238,6 +238,29 @@ const ModifyTargetInWebpackConfig = async (
   );
   await writeFile(webpackConfigPath, newWebpackConfig);
 };
+const ModifyTsConfigAccordingToTarget = async (
+  name: string,
+  target: "node" | "browser",
+) => {
+  // if target is "browser" then do the following modifications:
+  // "moduleResolution": "nodenext", => "moduleResolution": "bundler",
+  // "module": "NodeNext", => "module": "ESNext",
+  if (target === "browser") {
+    InfoLog("Modifying tsconfig.json...");
+    const tsConfig = JSON.parse(
+      (await readFile(`${name}/tsconfig.json`)).toString(),
+    ) as {
+      compilerOptions: {
+        moduleResolution: string;
+        module: string;
+      };
+    };
+    tsConfig.compilerOptions.moduleResolution = "bundler";
+    tsConfig.compilerOptions.module = "ESNext";
+    await writeFile(`${name}/tsconfig.json`, JSON.stringify(tsConfig, null, 2));
+  }
+};
+
 const InstallTypesForNodeTarget = async (name: string) => {
   InfoLog("Installing @types/node...");
   const command = `cd ${name} && npm install @types/node --save-dev`;
@@ -250,6 +273,7 @@ const AdjustPackageTemplateForTarget = async (
 ) => {
   InfoLog("Adjusting webpack config...");
   await ModifyTargetInWebpackConfig(name, target);
+  await ModifyTsConfigAccordingToTarget(name, target);
   if (target === "node") await InstallTypesForNodeTarget(name);
 };
 
