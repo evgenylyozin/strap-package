@@ -247,17 +247,15 @@ const ModifyTsConfigAccordingToTarget = async (
   // "module": "NodeNext", => "module": "ESNext",
   if (target === "browser") {
     InfoLog("Modifying tsconfig.json...");
-    const tsConfig = JSON.parse(
-      (await readFile(`${name}/tsconfig.json`)).toString(),
-    ) as {
-      compilerOptions: {
-        moduleResolution: string;
-        module: string;
-      };
-    };
-    tsConfig.compilerOptions.moduleResolution = "bundler";
-    tsConfig.compilerOptions.module = "ESNext";
-    await writeFile(`${name}/tsconfig.json`, JSON.stringify(tsConfig, null, 2));
+    const tsConfigPath = `${name}/tsconfig.json`;
+    const tsConfig = (await readFile(tsConfigPath)).toString();
+    const newTsConfig = tsConfig
+      .replace(
+        /"moduleResolution": "nodenext",/g,
+        `"moduleResolution": "bundler",`,
+      )
+      .replace(/"module": "NodeNext",/g, `"module": "ESNext",`);
+    await writeFile(tsConfigPath, newTsConfig);
   }
 };
 
