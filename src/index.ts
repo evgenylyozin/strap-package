@@ -5,7 +5,7 @@ import { DefineName } from "./naming";
 import { DefineSettings } from "./settings";
 import { Log, ReportErrorAndExit } from "./helpers";
 
-(async () => {
+void (async () => {
   try {
     Log("header", "Create an npm package boilerplate with strap-package");
     await Checks();
@@ -15,7 +15,4 @@ import { Log, ReportErrorAndExit } from "./helpers";
   } catch (e: unknown) {
     ReportErrorAndExit(e, "Something went wrong");
   }
-})().catch(() => {
-  // the error handling from CTRL+C
-  // see "Handling ctrl+c gracefully" at https://www.npmjs.com/package/@inquirer/prompts
-});
+})();
