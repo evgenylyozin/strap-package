@@ -3,6 +3,7 @@ import { exec } from "child_process";
 import { lookup } from "dns/promises";
 import { promisify } from "util";
 import { LogType, Setup, S } from "./types";
+import { readFile, writeFile } from "fs/promises";
 
 export const asyncExec = promisify(exec);
 export const asyncLookup = lookup;
@@ -54,4 +55,30 @@ export const ReportErrorAndExit = (e: unknown, title: string) => {
           : "Unknown error";
   Log("error", title, errorMessage);
   process.exit(1);
+};
+
+export const Rewrite = async (
+  path: string,
+  searchArr: RegExp[],
+  replaceArr: string[],
+) => {
+  if (searchArr.length !== replaceArr.length) {
+    throw new Error("searchArr and replaceArr must have the same length");
+  }
+  let file = (await readFile(path)).toString();
+  for (let i = 0; i < searchArr.length; i++) {
+    file = file.replace(searchArr[i], replaceArr[i]);
+  }
+  await writeFile(path, file);
+};
+
+export const JSONRewrite = async <T extends Record<string, unknown>>(
+  path: string,
+  replace: T,
+) => {
+  const json = JSON.parse((await readFile(path)).toString()) as T;
+  for (const key in replace) {
+    json[key] = replace[key];
+  }
+  await writeFile(path, JSON.stringify(json, null, 2));
 };
