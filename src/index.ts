@@ -57,27 +57,14 @@ const FixedSetup: Setup = {
   },
 };
 
-// then the changeable settings
-// mainly affect configs and additionally
-// generated files, but can remove husky from
-// the tools if needed
+// only settings which are customizable
 type Settings = {
   name: string;
-  isPrivate: boolean;
   target: "node" | "browser";
-  shouldInitializeGit: boolean;
-  shouldIncludeMITLicense: boolean;
-  shouldIncludeHuskyPrecommit: boolean;
-  shouldIncludeNPMPublishWorkflow: boolean;
 };
 const Settings: Settings = {
   name: "default-package",
-  isPrivate: false, // is the package should be considered private or not, affects package.json and the publish workflow
   target: "node", // affects webpack target and installed types
-  shouldInitializeGit: true, // if false then .gitignore will be removed else "git init" will be run
-  shouldIncludeMITLicense: true, // if false then "LICENSE" will be removed
-  shouldIncludeHuskyPrecommit: true, // if false, then husky will be removed and .husky file too + prepare script in package.json will be removed
-  shouldIncludeNPMPublishWorkflow: true, // if false, then .github will be removed
 };
 
 const LogEmptyLines = (count: number) => {
@@ -246,7 +233,7 @@ const ModifyTargetInWebpackConfig = async (
   const webpackConfigPath = `${name}/webpack.config.js`;
   const webpackConfig = (await readFile(webpackConfigPath)).toString();
   const newWebpackConfig = webpackConfig.replace(
-    /target: false,/g,
+    /target: "node",/g,
     `target: "${target}",`,
   );
   await writeFile(webpackConfigPath, newWebpackConfig);
@@ -265,70 +252,31 @@ const AdjustPackageTemplateForTarget = async (
   await ModifyTargetInWebpackConfig(name, target);
   if (target === "node") await InstallTypesForNodeTarget(name);
 };
-const RemovePrepareScriptFromPackageJson = async (name: string) => {
-  const packageJsonPath = `${name}/package.json`;
-  const packageJson = JSON.parse(
-    (await readFile(packageJsonPath)).toString(),
-  ) as {
-    scripts: Record<string, string>;
-  };
-  delete packageJson.scripts.prepare;
-  await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
-};
-const RemoveHuskyFolder = async (name: string) => {
-  const command = `cd ${name} && rm -rf .husky`;
+
+const SetupHusky = async (name: string) => {
+  InfoLog("Setting up husky...");
+  const preCommitScript = `npm run prettify
+npm run stage-updated
+npm run typecheck
+npm run lint
+npm run test
+npm run build`;
+  const command = `cd ${name} && npx husky init`;
   await asyncExec(command);
-};
-const UninstallHusky = async (name: string) => {
-  InfoLog("Uninstalling husky...");
-  const command = `cd ${name} && npm remove husky`;
-  await asyncExec(command);
-  SuccessLog("Successfully uninstalled husky");
-};
-const MakeTemplateWithoutHusky = async (name: string) => {
-  await RemoveHuskyFolder(name);
-  await RemovePrepareScriptFromPackageJson(name);
-  await UninstallHusky(name);
-};
-const MakeTemplateWithoutMITLicense = async (name: string) => {
-  const licensePath = `${name}/LICENSE`;
-  await asyncExec(`rm ${licensePath}`);
-};
-const MakeTemplateWithoutNPMPublishWorkflow = async (name: string) => {
-  const githubPath = `${name}/.github`;
-  await asyncExec(`rm -rf ${githubPath}`);
-  // then adjust the publish script in package.json
-  const packageJsonPath = `${name}/package.json`;
-  const packageJson = JSON.parse(
-    (await readFile(packageJsonPath)).toString(),
-  ) as {
-    scripts: Record<string, string>;
-  };
-  packageJson.scripts.publish = "npm publish --access public";
-  await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
-};
-const InitializeGit = async (name: string) => {
-  const command = `cd ${name} && git init`;
-  await asyncExec(command);
-};
-const RunHuskyPrepareScript = async (name: string) => {
-  const command = `cd ${name} && npm run prepare`;
-  await asyncExec(command);
+  // then swap .husky/pre-commit contents with the preCommitScript
+  // make sure the file is executable
+  const preCommitPath = `${name}/.husky/pre-commit`;
+  await writeFile(preCommitPath, preCommitScript);
+  await asyncExec(`chmod +x ${preCommitPath}`);
 };
 const ReturnFolderNameAndPackageName = (name: string) => {
   const folderName = name.startsWith("@") ? name.split("/")[1] : name;
   return { folderName, packageName: name };
 };
-const MakeTemplatePrivate = async (name: string) => {
-  InfoLog("Making package private...");
-  const packageJsonPath = `${name}/package.json`;
-  const packageJson = JSON.parse(
-    (await readFile(packageJsonPath)).toString(),
-  ) as {
-    scripts: Record<string, string>;
-  };
-  packageJson.scripts.publish = "npm publish";
-  await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
+const InitGit = async (name: string) => {
+  InfoLog("Initializing git...");
+  const command = `cd ${name} && git init`;
+  await asyncExec(command);
 };
 const AdjustPackageTemplateForName = async (
   packageFolder: string,
@@ -351,42 +299,14 @@ const AdjustPackageTemplateForName = async (
   await writeFile(readmePath, newReadme);
 };
 const AdjustPackageTemplate = async (settings: Settings) => {
-  const {
-    name,
-    isPrivate,
-    target,
-    shouldIncludeHuskyPrecommit,
-    shouldIncludeMITLicense,
-    shouldIncludeNPMPublishWorkflow,
-    shouldInitializeGit,
-  } = settings;
+  const { name, target } = settings;
   const { folderName, packageName } = ReturnFolderNameAndPackageName(name);
 
   InfoLog("Adjusting package template...");
   await AdjustPackageTemplateForName(folderName, packageName);
   await AdjustPackageTemplateForTarget(folderName, target);
-  if (!shouldIncludeMITLicense) {
-    InfoLog("Removing MIT license...");
-    await MakeTemplateWithoutMITLicense(folderName);
-  }
-  if (!shouldIncludeNPMPublishWorkflow) {
-    InfoLog("Removing npm publish workflow...");
-    await MakeTemplateWithoutNPMPublishWorkflow(folderName); // here the publish script is adjusted and includes public access
-  }
-  if (isPrivate) {
-    await MakeTemplatePrivate(folderName); // if private, make it just npm publish (scoped are private by default)
-  }
-  if (shouldInitializeGit) {
-    InfoLog("Initializing git...");
-    await InitializeGit(folderName);
-  }
-  if (!shouldIncludeHuskyPrecommit) {
-    InfoLog("Removing husky precommit...");
-    await MakeTemplateWithoutHusky(folderName);
-  } else {
-    InfoLog("Running husky prepare script...");
-    await RunHuskyPrepareScript(folderName);
-  }
+  await InitGit(folderName);
+  await SetupHusky(folderName);
 };
 (async () => {
   try {
@@ -457,7 +377,7 @@ const AdjustPackageTemplate = async (settings: Settings) => {
 
     // use defaults or select specific settings
     SubHeaderLog("Choosing settings:");
-    WarningLog("Notice! The following settings are not customizable:");
+    WarningLog("The following settings are not customizable:");
     InfoLog(FormattedSettings(FixedSetup));
     WarningLog("The project will always have these tools set up with NPM");
     WarningLog(
@@ -477,8 +397,8 @@ const AdjustPackageTemplate = async (settings: Settings) => {
       InfoLog("Exiting strap-package...");
       process.exit(1);
     }
-    SuccessLog("Default setup is approved. Choose the customizable settings.");
-    InfoLog("Customizable settings are (with defaults):");
+    SuccessLog("Default setup is approved");
+    InfoLog("Customizable settings (with defaults):");
     InfoLog(FormattedSettings(Settings));
     const shouldUseDefaults = await confirm({
       message: "Do you want to use default values for customizable settings?",
@@ -488,18 +408,6 @@ const AdjustPackageTemplate = async (settings: Settings) => {
     // then ask to select the settings
     if (!shouldUseDefaults) {
       SubHeaderLog("Choose customizable settings:");
-      if (Settings.name.startsWith("@")) {
-        InfoLog("Since you chose a scoped package name");
-        InfoLog("The package could be private or public");
-        WarningLog("The default is public");
-        InfoLog(
-          "Public packages are available to be installed and used by anyone",
-        );
-        Settings.isPrivate = await confirm({
-          message: "Make the package private?",
-          default: false,
-        });
-      }
       InfoLog(
         "The package could be targeting Node, Browser or both",
         "Selecting specific platform allows for using specific platform APIs",
@@ -518,48 +426,10 @@ const AdjustPackageTemplate = async (settings: Settings) => {
         choices: ["node", "browser"],
         default: "node",
       });
-
-      InfoLog("Initializing the git repository is done with just 'git init'");
-      Settings.shouldInitializeGit = await confirm({
-        message: "Do you want to initialize a git repository?",
-        default: true,
-      });
-      InfoLog(
-        "MIT license allows others to use/modify etc. your package free of charge",
-        "See more info at https://choosealicense.com/licenses/mit/",
-      );
-      Settings.shouldIncludeMITLicense = await confirm({
-        message: "Do you want to include MIT license?",
-        default: true,
-      });
-
-      InfoLog(
-        "Including husky pre-commit hook is usually useful to test, lint and format the code before commit is made",
-      );
-      Settings.shouldIncludeHuskyPrecommit = await confirm({
-        message: "Do you want to include husky pre-commit hook?",
-        default: true,
-      });
-
-      InfoLog(
-        "Including npm publish workflow for publishing to npm registry",
-        "adds a simple workflow which is used by github actions to publish the package to npm registry",
-        "Additional info is going to be generated in the README.dev.md file if the selected settings allow for this file to be included",
-      );
-      Settings.shouldIncludeNPMPublishWorkflow = await confirm({
-        message: "Do you want to include npm publish workflow?",
-        default: true,
-      });
     }
     SuccessLog("DONE! Selected settings:");
     InfoLog(FormattedSettings(Settings));
     SubHeaderLog("Initializing the package in the current directory...");
-    // executing commands to install all the dependencies
-    // and setup the package skeleton
-    // should use single exec command after all the data has been collected
-    // make the folder with the name of the package
-    // then copy the ./template folder contents to the new folder
-
     try {
       const { folderName } = ReturnFolderNameAndPackageName(Settings.name);
       // copy all the template files to the new folder with the name of the package
