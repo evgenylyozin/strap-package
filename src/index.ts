@@ -225,6 +225,9 @@ const InstallDependencies = async (folderName: string) => {
     InfoLog(`Installing production dependencies...`);
     await Install(folderName, prodDependencies);
   }
+  if (Settings.target === "node") await InstallTypesForNodeTarget(folderName);
+  await InitGit(folderName);
+  await SetupHusky(folderName);
 };
 const ModifyTargetInWebpackConfig = async (
   name: string,
@@ -272,7 +275,6 @@ const AdjustPackageTemplateForTarget = async (
   InfoLog("Adjusting webpack config...");
   await ModifyTargetInWebpackConfig(name, target);
   await ModifyTsConfigAccordingToTarget(name, target);
-  if (target === "node") await InstallTypesForNodeTarget(name);
 };
 
 const SetupHusky = async (name: string) => {
@@ -327,8 +329,6 @@ const AdjustPackageTemplate = async (settings: Settings) => {
   InfoLog("Adjusting package template...");
   await AdjustPackageTemplateForName(folderName, packageName);
   await AdjustPackageTemplateForTarget(folderName, target);
-  await InitGit(folderName);
-  await SetupHusky(folderName);
 };
 (async () => {
   try {
@@ -456,12 +456,10 @@ const AdjustPackageTemplate = async (settings: Settings) => {
       const { folderName } = ReturnFolderNameAndPackageName(Settings.name);
       // copy all the template files to the new folder with the name of the package
       await PrepareFolder(folderName);
+      // then adjust the package template according to the settings
+      await AdjustPackageTemplate(Settings);
       // then install all the dependencies
       await InstallDependencies(folderName);
-      // then adjust the package template according to the settings
-      // removing some files if needed, reinstalling dependencies
-      // etc.
-      await AdjustPackageTemplate(Settings);
     } catch (e) {
       const errorMessage =
         e instanceof Error
