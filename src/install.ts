@@ -1,9 +1,22 @@
 import { spawn } from "child_process";
-import { writeFile } from "fs/promises";
 import { Settings, FixedSetup } from "./constants";
-import { Log, asyncExec } from "./helpers";
+import { Log, Rewrite, asyncExecWithCWD } from "./helpers";
 import { Setup } from "./types";
 
+/**
+ * Assembles dependencies from the given object.
+ *
+ * The object must have the type `Setup`.
+ *
+ * The function iterates over the object, and for each property, if the `isDev`
+ * property of the value object is equal to the `isDev` parameter, it adds the
+ * name of the property and the supplementary dependencies to the `dependencies`
+ * array.
+ *
+ * @param {Setup} object - The object from which to assemble dependencies.
+ * @param {boolean} isDev - Whether to include or exclude development dependencies.
+ * @returns {string[]} The assembled dependencies.
+ */
 const assembleDependencies = (object: Setup, isDev: boolean) => {
   const dependencies: string[] = [];
   for (const [, value] of Object.entries(object)) {
@@ -16,12 +29,24 @@ const assembleDependencies = (object: Setup, isDev: boolean) => {
   }
   return dependencies;
 };
-const Install = (dependencies: string[]) => {
+/**
+ * Installs the given dependencies with npm.
+ *
+ * @param {string[]} dependencies - The dependencies to install.
+ * @param {boolean} isDev - Whether to install the dependencies as development dependencies or not.
+ * @returns {Promise<number>} A promise which resolves with the exit code of the npm process.
+ */
+const Install = (dependencies: string[], isDev: boolean) => {
   return new Promise((resolve, reject) => {
     const c = spawn(
       "npm",
-      ["install", ...dependencies, "--save-dev", "--progress"],
-      { stdio: "inherit", cwd: Settings.getFolder() },
+      [
+        "install",
+        ...dependencies,
+        "--progress",
+        ...(isDev ? ["--save-dev"] : ["--save"]),
+      ],
+      { stdio: "inherit", cwd: Settings.getFolder() }, // the working directory is set here
     );
     c.on("close", (code) => {
       if (code === 0) {
@@ -41,13 +66,30 @@ const Install = (dependencies: string[]) => {
   });
 };
 
-const InstallTypesForNodeTarget = async () => {
-  Log("info", "Installing @types/node...");
-  const command = `cd ${Settings.getFolder()} && npm install @types/node --save-dev`;
-  await asyncExec(command);
-  Log("success", "Successfully installed @types/node");
+/**
+ * Initializes a new git repository in the current directory.
+ *
+ * This function logs an informative message, runs the `git init` command,
+ * and then logs a success message.
+ *
+ * @returns {Promise<void>} A promise which resolves when the initialization
+ * is complete.
+ */
+const InitGit = async () => {
+  Log("info", "Initializing git...");
+  const command = `git init`;
+  await asyncExecWithCWD(command);
 };
 
+/**
+ * Sets up husky to run the pre-commit hook.
+ *
+ * This function logs an informative message, initializes husky using the
+ * `npx husky init` command, and then writes the pre-commit script to the
+ * `.husky/pre-commit` file and makes it executable.
+ *
+ * @returns {Promise<void>} A promise which resolves when the setup is complete.
+ */
 const SetupHusky = async () => {
   Log("info", "Setting up husky...");
   const preCommitScript = `npm run prettify
@@ -56,34 +98,45 @@ npm run typecheck
 npm run lint
 npm run test
 npm run build`;
-  const command = `cd ${Settings.getFolder()} && npx husky init`;
-  await asyncExec(command);
+  const command = `npx husky init`;
+  await asyncExecWithCWD(command);
   // then swap .husky/pre-commit contents with the preCommitScript
   // make sure the file is executable
-  const preCommitPath = `${Settings.getFolder()}/.husky/pre-commit`;
-  await writeFile(preCommitPath, preCommitScript);
-  await asyncExec(`chmod +x ${preCommitPath}`);
+  await Rewrite(
+    `${Settings.getFolder()}/.husky/pre-commit`,
+    [/.*/],
+    [preCommitScript],
+  );
+  await asyncExecWithCWD(`chmod +x .husky/pre-commit`);
 };
 
-const InitGit = async () => {
-  Log("info", "Initializing git...");
-  const command = `cd ${Settings.getFolder()} && git init`;
-  await asyncExec(command);
-};
-
+/**
+ * Installs the dependencies for the generated package.
+ *
+ * This function logs informative messages, installs the development and
+ * production dependencies, installs `@types/node` if the target is Node.js,
+ * initializes a new git repository in the current directory, and sets up
+ * husky to run the pre-commit hook.
+ *
+ * @returns {Promise<void>} A promise which resolves when the installation
+ * is complete.
+ */
 export const InstallDependencies = async () => {
   const devDependencies = assembleDependencies(FixedSetup, true);
   const prodDependencies = assembleDependencies(FixedSetup, false);
   Log("info", "Installing dependencies...");
   if (devDependencies.length > 0) {
     Log("info", `Installing development dependencies...`);
-    await Install(devDependencies);
+    await Install(devDependencies, true);
   }
   if (prodDependencies.length > 0) {
     Log("info", `Installing production dependencies...`);
-    await Install(prodDependencies);
+    await Install(prodDependencies, false);
   }
-  if (Settings.target === "node") await InstallTypesForNodeTarget();
+  if (Settings.target === "node") {
+    Log("info", "Installing @types/node...");
+    await Install(["@types/node"], true);
+  }
   await InitGit();
   await SetupHusky();
 };

@@ -2,6 +2,16 @@ import { select, confirm } from "@inquirer/prompts";
 import { FixedSetup, Settings } from "./constants";
 import { Log, FormattedSettings, ReportErrorAndExit } from "./helpers";
 
+/**
+ * Asks the user if they agree to use the default unchangeable settings for the boilerplate.
+ * If the user disagrees, then the program exits.
+ * If the user agrees, then the program asks the user if they want to use the default values
+ * for the customizable settings.
+ * If the user wants to change the default customizable settings, then asks the user to select
+ * the settings.
+ * Logs the selected settings and their defaults.
+ * If an error occurs, then it is reported and the program exits.
+ */
 export const DefineSettings = async () => {
   try {
     // use defaults or select specific settings

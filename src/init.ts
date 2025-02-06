@@ -3,6 +3,13 @@ import { Log, ReportErrorAndExit } from "./helpers";
 import { InstallDependencies } from "./install";
 import { PrepareFolder } from "./prepare";
 
+/**
+ * Initializes a package in the current directory.
+ *
+ * This function will copy all the necessary files into the current directory,
+ * adjust the package template according to the settings, and then install all
+ * the dependencies.
+ */
 export const Init = async () => {
   try {
     Log("subHeader", "Initializing the package in the current directory...");
@@ -21,6 +28,11 @@ export const Init = async () => {
   }
 };
 
+/**
+ * Logs a success message indicating that the package has been successfully
+ * initialized in the current directory and informs the user that a TODO.md
+ * file has been included for final setup.
+ */
 const InitSuccess = () => {
   Log(
     "success",

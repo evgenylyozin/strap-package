@@ -1,7 +1,6 @@
-// the tools which will be installed
-
 import { FolderGiver, S, Setup } from "./types";
 
+// the tools which will be installed
 // in any case
 export const FixedSetup: Setup = {
   language: {
@@ -36,9 +35,10 @@ export const FixedSetup: Setup = {
   },
 };
 
+// Changeable settings
 export const Settings: S & FolderGiver = {
   name: "default-package",
-  target: "node", // affects webpack target and installed types
+  target: "node", // affects webpack target, typescript configuration, and installed types
   getFolder: () => {
     return Settings.name.startsWith("@")
       ? Settings.name.split("/")[1]
