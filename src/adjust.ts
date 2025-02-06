@@ -6,12 +6,15 @@ import { JSONRewrite, Log, Rewrite } from "./helpers";
  * target specified in Settings. Replaces the existing target with the
  * value of Settings.target.
  */
-const ModifyTargetInWebpackConfig = async () => {
+export const ModifyTargetInWebpackConfig = async (
+  path = Settings.getFolder(),
+  target = Settings.target,
+) => {
   Log("info", "Modifying target in webpack.config.js...");
   await Rewrite(
-    `${Settings.getFolder()}/webpack.config.js`,
+    `${path}/webpack.config.js`,
     [/target: "node",/g],
-    [`target: "${Settings.target}",`],
+    [`target: "${target}",`],
   );
 };
 /**
