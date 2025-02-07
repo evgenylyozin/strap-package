@@ -1,5 +1,5 @@
 import { input, confirm } from "@inquirer/prompts";
-import * as validate from "validate-npm-package-name";
+import validate from "validate-npm-package-name";
 import { Settings } from "./constants";
 import { Log, ReportErrorAndExit } from "./helpers";
 

@@ -1,7 +1,9 @@
-const path = require("path");
-const ShebangPlugin = require("webpack-shebang-plugin");
+import path from "path";
 
-module.exports = {
+const __dirname = path.resolve();
+import ShebangPlugin from "webpack-shebang-plugin";
+
+export default {
   entry: "./src/index.ts",
   module: {
     rules: [

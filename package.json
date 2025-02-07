@@ -5,6 +5,7 @@
   "bin": {
     "strap-package": "./dist/index.js"
   },
+  "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/evgenylyozin/strap-package.git"
