@@ -18,8 +18,7 @@ export default tseslint.config(
       "**/dist/**",
       "**/.git/**",
       "**/.husky/**",
-      "eslint.config.mjs",
-      "webpack.config.js",
+      "*.config*",
     ],
   },
 );

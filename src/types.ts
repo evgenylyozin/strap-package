@@ -14,7 +14,7 @@ export type Setup = {
 // only settings which are customizable
 export type S = {
   name: string;
-  target: "node" | "browser";
+  target: "node" | "web";
 };
 export interface FolderGiver {
   getFolder: () => string;

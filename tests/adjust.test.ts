@@ -22,15 +22,15 @@ describe("testing ModifyTargetInWebpackConfig", () => {
   afterEach(async () => {
     await RemoveFile(`${CurrentDir()}/tests/webpack.config.js`);
   });
-  test("we expect the target to switch from node to browser", async () => {
+  test("we expect the target to switch from node to web", async () => {
     await ModifyTargetInWebpackConfig(
       `${CurrentDir()}/tests/webpack.config.js`,
-      "browser",
+      "web",
     );
     const file = await ReadFileAsString(
       `${CurrentDir()}/tests/webpack.config.js`,
     );
-    expect(file).toContain(`target: "browser",`);
+    expect(file).toContain(`target: "web",`);
   });
   test("we expect the target not to change from node to node", async () => {
     await ModifyTargetInWebpackConfig(

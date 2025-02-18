@@ -38,9 +38,7 @@ export const AdjustPackageTemplateForName = async (
  * Adjusts the package template to use the target specified in Settings.
  *
  * This function changes the `target` setting in the Webpack configuration file
- * (webpack.config.js) to the current value of Settings.target and adjusts the
- * TypeScript configuration file (tsconfig.json) to use the correct module
- * resolution and module type for the specified target.
+ * (webpack.config.js) to the current value of Settings.target
  */
 const AdjustPackageTemplateForTarget = async () => {
   Log("info", "Adjusting webpack config...");
@@ -53,9 +51,7 @@ const AdjustPackageTemplateForTarget = async () => {
  * replaces occurrences of `[PACKAGE NAME]` in the `README.md` file with
  * the current package name specified in the `Settings`. It also changes
  * the `target` setting in the Webpack configuration file
- * (webpack.config.js) to the current value of Settings.target and adjusts the
- * TypeScript configuration file (tsconfig.json) to use the correct module
- * resolution and module type for the specified target.
+ * (webpack.config.js) to the current value of Settings.target
  */
 export const AdjustPackageTemplate = async () => {
   Log("info", "Adjusting package template...");

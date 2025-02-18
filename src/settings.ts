@@ -52,11 +52,11 @@ export const DefineSettings = async () => {
       Log("subHeader", "Choose customizable settings:");
       Log(
         "info",
-        "The package could be targeting Node, Browser or both",
+        "The package could be targeting Node, Web or both",
         "Selecting specific platform allows for using specific platform APIs",
         "Like crypto, fs, path, os, etc. in Node",
-        "Or window object etc. in Browser",
-        "If the package is intended to be used in both environments, then choose 'Browser' to not install additional types for Node",
+        "Or window object etc. in Browser (Web)",
+        "If the package is intended to be used in both environments, then choose 'Web' to not install additional types for Node",
       );
       Log(
         "warning",
@@ -66,9 +66,9 @@ export const DefineSettings = async () => {
         "warning",
         "So be careful and check if the used APIs are available in both environments",
       );
-      Settings.target = await select<"node" | "browser">({
+      Settings.target = await select<"node" | "web">({
         message: "Choose the target for the package",
-        choices: ["node", "browser"],
+        choices: ["node", "web"],
         default: "node",
       });
     }
