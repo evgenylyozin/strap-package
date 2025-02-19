@@ -2,7 +2,7 @@ import chalk from "chalk";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { LogType, Setup, S } from "./types.js";
-import { readFile, writeFile, rm } from "fs/promises";
+import { readFile, writeFile, rm, lstat } from "fs/promises";
 import { Settings } from "./constants.js";
 
 /**
@@ -164,5 +164,14 @@ export const CreateFile = async (path: string, content: string) => {
   await writeFile(path, content);
 };
 export const RemoveFile = async (path: string) => {
-  await rm(path);
+  if (await CheckFileExists(path)) await rm(path);
+};
+
+export const CheckFileExists = async (path: string) => {
+  try {
+    await lstat(path);
+    return true;
+  } catch {
+    return false;
+  }
 };

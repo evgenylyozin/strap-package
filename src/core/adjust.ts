@@ -1,20 +1,32 @@
 import { Settings } from "./constants.js";
 import { JSONRewrite, Log, RemoveFile, Rewrite } from "./helpers.js";
 
-export const AdjustBuildProcessForTarget = async () => {
+/**
+ * Modifies the build process depending on the Settings.target value.
+ *
+ * If Settings.target === "web", it changes the build script in the package.json
+ * to "vite build". Otherwise, it removes the vite.config.js file.
+ *
+ * It logs what it is doing.
+ */
+export const AdjustBuildProcessForTarget = async (
+  packageJsonPath = Settings.getFolder().concat("/package.json"),
+  viteConfigPath = Settings.getFolder().concat("/vite.config.js"),
+  target = Settings.target,
+) => {
   // if the target is "web", then swap the build script in the
   // package.json for "vite build"
-  if (Settings.target === "web") {
+  if (target === "web") {
     Log("info", "Modifying build script in package.json...");
     await Rewrite(
-      `${Settings.getFolder()}/package.json`,
+      packageJsonPath,
       [/"build": "tsc --p tsconfig\.prod\.json",/g],
       [`"build": "vite build",`],
     );
   } else {
     // else remove the vite.config.js file
     Log("info", "Removing vite.config.js...");
-    await RemoveFile(`${Settings.getFolder()}/vite.config.js`);
+    await RemoveFile(viteConfigPath);
   }
 };
 
@@ -25,11 +37,14 @@ export const AdjustBuildProcessForTarget = async () => {
  * "nodenext" module resolution and "NodeNext" module type with "bundler"
  * and "ESNext" respectively.
  */
-const ModifyTsConfigAccordingToTarget = async () => {
-  if (Settings.target === "web") {
+export const ModifyTsConfigAccordingToTarget = async (
+  tsconfigPath = Settings.getFolder().concat("/tsconfig.json"),
+  target = Settings.target,
+) => {
+  if (target === "web") {
     Log("info", "Modifying target in tsconfig.json...");
     await Rewrite(
-      `${Settings.getFolder()}/tsconfig.json`,
+      tsconfigPath,
       [/"moduleResolution": "nodenext",/g, /"module": "NodeNext",/g],
       [`"moduleResolution": "bundler",`, `"module": "ESNext",`],
     );
