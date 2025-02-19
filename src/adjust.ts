@@ -15,6 +15,24 @@ export const ModifyTargetInWebpackConfig = async (
 };
 
 /**
+ * Modifies the TypeScript configuration file (tsconfig.json) to adjust the
+ * module resolution and module type settings according to the current target
+ * specified in Settings. If the target is "browser", it replaces the existing
+ * "nodenext" module resolution and "NodeNext" module type with "bundler"
+ * and "ESNext" respectively.
+ */
+const ModifyTsConfigAccordingToTarget = async () => {
+  if (Settings.target === "web") {
+    Log("info", "Modifying target in tsconfig.json...");
+    await Rewrite(
+      `${Settings.getFolder()}/tsconfig.json`,
+      [/"moduleResolution": "nodenext",/g, /"module": "NodeNext",/g],
+      [`"moduleResolution": "bundler",`, `"module": "ESNext",`],
+    );
+  }
+};
+
+/**
  * Adjusts the package template to reflect the specified package name.
  *
  * This function updates the package name in the `package.json` file and
@@ -38,11 +56,14 @@ export const AdjustPackageTemplateForName = async (
  * Adjusts the package template to use the target specified in Settings.
  *
  * This function changes the `target` setting in the Webpack configuration file
- * (webpack.config.js) to the current value of Settings.target
+ * (webpack.config.js) to the current value of Settings.target and adjusts the
+ * TypeScript configuration file (tsconfig.json) to use the correct module
+ * resolution and module type for the specified target.
  */
 const AdjustPackageTemplateForTarget = async () => {
   Log("info", "Adjusting webpack config...");
   await ModifyTargetInWebpackConfig();
+  await ModifyTsConfigAccordingToTarget();
 };
 /**
  * Adjusts the package template to match the specified package name and target.
