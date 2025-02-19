@@ -1,5 +1,5 @@
-import { Settings } from "./constants";
-import { Log, asyncExec } from "./helpers";
+import { Settings } from "./constants.js";
+import { Log, asyncExec } from "./helpers.js";
 
 /**
  * Prepares the folder for the package.

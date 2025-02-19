@@ -1,7 +1,7 @@
-import { AdjustPackageTemplate } from "./adjust";
-import { Log, ReportErrorAndExit } from "./helpers";
-import { InstallDependencies } from "./install";
-import { PrepareFolder } from "./prepare";
+import { AdjustPackageTemplate } from "./adjust.js";
+import { Log, ReportErrorAndExit } from "./helpers.js";
+import { InstallDependencies } from "./install.js";
+import { PrepareFolder } from "./prepare.js";
 
 /**
  * Initializes a package in the current directory.

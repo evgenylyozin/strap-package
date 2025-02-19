@@ -1,6 +1,6 @@
 import { select, confirm } from "@inquirer/prompts";
-import { FixedSetup, Settings } from "./constants";
-import { Log, FormattedSettings, ReportErrorAndExit } from "./helpers";
+import { FixedSetup, Settings } from "./constants.js";
+import { Log, FormattedSettings, ReportErrorAndExit } from "./helpers.js";
 
 /**
  * Asks the user if they agree to use the default unchangeable settings for the boilerplate.
@@ -22,6 +22,10 @@ export const DefineSettings = async () => {
     Log(
       "warning",
       "and the current working directory as a starting point to generate the boilerplate",
+    );
+    Log(
+      "warning",
+      "Vite will be used as a bundler only if the targeted platform is Web",
     );
     const confirmToUseUnchangeableDefaults = await confirm({
       message: "Do you agree to use this setup?",
@@ -57,6 +61,7 @@ export const DefineSettings = async () => {
         "Like crypto, fs, path, os, etc. in Node",
         "Or window object etc. in Browser (Web)",
         "If the package is intended to be used in both environments, then choose 'Web' to not install additional types for Node",
+        "And add a specialized build tool (Vite)",
       );
       Log(
         "warning",

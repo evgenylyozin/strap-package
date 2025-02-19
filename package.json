@@ -11,15 +11,16 @@
     "url": "git+https://github.com/evgenylyozin/strap-package.git"
   },
   "scripts": {
-    "build": "webpack build --mode=production",
+    "build": "tsc --p tsconfig.prod.json",
+    "make-executable": "chmod +x ./dist/index.js",
     "test": "vitest run",
     "lint": "eslint ./src",
     "prettify": "prettier . --write",
     "typecheck": "tsc --noEmit",
     "prepare": "husky",
     "stage-updated": "git add -u",
-    "prepare-release": "npm run typecheck && npm run lint && npm run test && npm run build",
-    "start": "npm run build && npx ."
+    "prepare-release": "npm run typecheck && npm run lint && npm run test && npm run build && npm run make-executable",
+    "start": "npm run build && npm run make-executable && npx ."
   },
   "keywords": [
     "npm",

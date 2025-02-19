@@ -3,9 +3,12 @@
     "isolatedModules": true,
     "allowJs": true,
     "target": "es6",
-    "moduleResolution": "bundler",
-    "module": "ESNext",
-    "esModuleInterop": true
+    "moduleResolution": "nodenext",
+    "module": "NodeNext",
+    "esModuleInterop": true,
+    "outDir": "dist",
+    "declaration": true,
+    "declarationDir": "dist"
   },
-  "exclude": ["node_modules", "dist", "*.config*"]
+  "exclude": ["node_modules", "dist", "*config*"]
 }

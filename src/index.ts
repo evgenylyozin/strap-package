@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-import { Init } from "./init";
-import { Checks } from "./checks";
-import { DefineName } from "./naming";
-import { DefineSettings } from "./settings";
-import { Log, ReportErrorAndExit } from "./helpers";
+import { Init } from "./core/init.js";
+import { Checks } from "./core/checks.js";
+import { DefineName } from "./core/naming.js";
+import { DefineSettings } from "./core/settings.js";
+import { Log, ReportErrorAndExit } from "./core/helpers.js";
 
 // main function which should run
 // when the package is called via npx

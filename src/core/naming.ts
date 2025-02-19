@@ -1,7 +1,7 @@
 import { input, confirm } from "@inquirer/prompts";
 import validate from "validate-npm-package-name";
-import { Settings } from "./constants";
-import { Log, ReportErrorAndExit } from "./helpers";
+import { Settings } from "./constants.js";
+import { Log, ReportErrorAndExit } from "./helpers.js";
 
 /**
  * Logs warnings regarding package naming conventions and other related information.

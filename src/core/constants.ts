@@ -1,4 +1,4 @@
-import { FolderGiver, S, Setup } from "./types";
+import { FolderGiver, S, Setup } from "./types.js";
 
 // the tools which will be installed
 // in any case
@@ -24,8 +24,8 @@ export const FixedSetup: Setup = {
     isDev: true,
   },
   buildTool: {
-    name: "webpack",
-    supplementary: ["ts-loader", "webpack-cli"],
+    name: "vite",
+    supplementary: ["vite-plugin-dts"],
     isDev: true,
   },
   hooksTool: {

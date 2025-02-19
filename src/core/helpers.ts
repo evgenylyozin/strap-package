@@ -1,9 +1,9 @@
 import chalk from "chalk";
 import { exec } from "child_process";
 import { promisify } from "util";
-import { LogType, Setup, S } from "./types";
-import { readFile, writeFile } from "fs/promises";
-import { Settings } from "./constants";
+import { LogType, Setup, S } from "./types.js";
+import { readFile, writeFile, rm } from "fs/promises";
+import { Settings } from "./constants.js";
 
 /**
  * Executes a command asynchronously using the `exec` function from the `child_process` module.
@@ -158,4 +158,11 @@ export const JSONRewrite = async <T extends Record<string, unknown>>(
     json[key] = replace[key];
   }
   await writeFile(path, JSON.stringify(json, null, 2));
+};
+
+export const CreateFile = async (path: string, content: string) => {
+  await writeFile(path, content);
+};
+export const RemoveFile = async (path: string) => {
+  await rm(path);
 };

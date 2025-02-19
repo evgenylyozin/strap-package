@@ -1,5 +1,5 @@
 import { lookup } from "dns/promises";
-import { Log, ReportErrorAndExit, asyncExec } from "./helpers";
+import { Log, ReportErrorAndExit, asyncExec } from "./helpers.js";
 
 /**
  * Checks if the git command is available.

@@ -1,7 +1,7 @@
 import { spawn } from "child_process";
-import { Settings, FixedSetup } from "./constants";
-import { Log, Rewrite, asyncExecWithCWD } from "./helpers";
-import { Setup } from "./types";
+import { Settings, FixedSetup } from "./constants.js";
+import { Log, Rewrite, asyncExecWithCWD } from "./helpers.js";
+import { Setup } from "./types.js";
 
 /**
  * Assembles dependencies from the given object.
@@ -110,6 +110,15 @@ npm run build`;
   await asyncExecWithCWD(`chmod +x .husky/pre-commit`);
 };
 
+const ExcludeViteIfTargetIsNode = (dependencies: string[]) => {
+  if (Settings.target === "node") {
+    Log("info", "Excluding vite from dependencies since target is node...");
+    return dependencies.filter(
+      (dep) => dep !== "vite" && dep !== "vite-plugin-dts",
+    );
+  }
+  return dependencies;
+};
 /**
  * Installs the dependencies for the generated package.
  *
@@ -122,8 +131,11 @@ npm run build`;
  * is complete.
  */
 export const InstallDependencies = async () => {
-  const devDependencies = assembleDependencies(FixedSetup, true);
+  const devDependencies = ExcludeViteIfTargetIsNode(
+    assembleDependencies(FixedSetup, true),
+  );
   const prodDependencies = assembleDependencies(FixedSetup, false);
+
   Log("info", "Installing dependencies...");
   if (devDependencies.length > 0) {
     Log("info", `Installing development dependencies...`);
@@ -137,6 +149,7 @@ export const InstallDependencies = async () => {
     Log("info", "Installing @types/node...");
     await Install(["@types/node"], true);
   }
+
   await InitGit();
   await SetupHusky();
 };

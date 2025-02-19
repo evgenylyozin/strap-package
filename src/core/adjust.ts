@@ -1,17 +1,21 @@
-import { Settings } from "./constants";
-import { JSONRewrite, Log, Rewrite } from "./helpers";
+import { Settings } from "./constants.js";
+import { JSONRewrite, Log, RemoveFile, Rewrite } from "./helpers.js";
 
-/**
- * Modifies the target setting in webpack.config.js to match the current
- * target specified in Settings. Replaces the existing target with the
- * value of Settings.target.
- */
-export const ModifyTargetInWebpackConfig = async (
-  path = Settings.getFolder().concat("/webpack.config.js"),
-  target = Settings.target,
-) => {
-  Log("info", "Modifying target in webpack.config.js...");
-  await Rewrite(path, [/target: "node",/g], [`target: "${target}",`]);
+export const AdjustBuildProcessForTarget = async () => {
+  // if the target is "web", then swap the build script in the
+  // package.json for "vite build"
+  if (Settings.target === "web") {
+    Log("info", "Modifying build script in package.json...");
+    await Rewrite(
+      `${Settings.getFolder()}/package.json`,
+      [/"build": "tsc --p tsconfig\.prod\.json",/g],
+      [`"build": "vite build",`],
+    );
+  } else {
+    // else remove the vite.config.js file
+    Log("info", "Removing vite.config.js...");
+    await RemoveFile(`${Settings.getFolder()}/vite.config.js`);
+  }
 };
 
 /**
@@ -61,8 +65,7 @@ export const AdjustPackageTemplateForName = async (
  * resolution and module type for the specified target.
  */
 const AdjustPackageTemplateForTarget = async () => {
-  Log("info", "Adjusting webpack config...");
-  await ModifyTargetInWebpackConfig();
+  await AdjustBuildProcessForTarget();
   await ModifyTsConfigAccordingToTarget();
 };
 /**

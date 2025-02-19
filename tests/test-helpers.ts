@@ -1,11 +1,5 @@
-import { writeFile, readFile, cp, rm } from "fs/promises";
+import { readFile, cp } from "fs/promises";
 
-export const CreateFile = async (path: string, content: string) => {
-  await writeFile(path, content);
-};
-export const RemoveFile = async (path: string) => {
-  await rm(path);
-};
 export const CopyFile = async (from: string, to: string) => {
   await cp(from, to);
 };

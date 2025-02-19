@@ -1,48 +1,11 @@
 import { describe, test, beforeEach, afterEach, expect } from "vitest";
+import { AdjustPackageTemplateForName } from "../src/core/adjust.js";
 import {
-  AdjustPackageTemplateForName,
-  ModifyTargetInWebpackConfig,
-} from "../src/adjust.js";
-import {
-  CopyFile,
-  CreateFile,
   CurrentDir,
   ReadFileAsJSON,
   ReadFileAsString,
-  RemoveFile,
 } from "./test-helpers.js";
-
-describe("testing ModifyTargetInWebpackConfig", () => {
-  beforeEach(async () => {
-    await CopyFile(
-      `${CurrentDir()}/webpack.config.js`,
-      `${CurrentDir()}/tests/webpack.config.js`,
-    );
-  });
-  afterEach(async () => {
-    await RemoveFile(`${CurrentDir()}/tests/webpack.config.js`);
-  });
-  test("we expect the target to switch from node to web", async () => {
-    await ModifyTargetInWebpackConfig(
-      `${CurrentDir()}/tests/webpack.config.js`,
-      "web",
-    );
-    const file = await ReadFileAsString(
-      `${CurrentDir()}/tests/webpack.config.js`,
-    );
-    expect(file).toContain(`target: "web",`);
-  });
-  test("we expect the target not to change from node to node", async () => {
-    await ModifyTargetInWebpackConfig(
-      `${CurrentDir()}/tests/webpack.config.js`,
-      "node",
-    );
-    const file = await ReadFileAsString(
-      `${CurrentDir()}/tests/webpack.config.js`,
-    );
-    expect(file).toContain(`target: "node",`);
-  });
-});
+import { CreateFile, RemoveFile } from "../src/core/helpers.js";
 
 describe("testing AdjustPackageTemplateForName", () => {
   const packageJsonObj = {
