@@ -79,11 +79,9 @@ describe("testing AdjustBuildProcessForTarget", () => {
       "node",
     );
     // expect the vite.config.js file to not exist
-    try {
-      await ReadFileAsString(`${CurrentDir()}/tests/vite.config.js`);
-    } catch (e) {
-      expect(e).toBeInstanceOf(Error);
-    }
+    await expect(
+      ReadFileAsString(`${CurrentDir()}/tests/vite.config.js`),
+    ).rejects.toThrow();
     // expect the build script to not change
     const file = await ReadFileAsJSON<{ scripts: { build: string } }>(
       `${CurrentDir()}/tests/package.json`,

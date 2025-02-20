@@ -1,6 +1,16 @@
 import { lookup } from "dns/promises";
 import { Log, ReportErrorAndExit, asyncExec } from "./helpers.js";
 
+export const checkScriptAvailable = async (scriptName: string) => {
+  try {
+    Log("info", `Checking if ${scriptName} is available...`);
+    await asyncExec(`which ${scriptName}`);
+    Log("success", `${scriptName} is available`);
+  } catch (e) {
+    Log("error", `${scriptName} is not available`);
+    throw e;
+  }
+};
 /**
  * Checks if the git command is available.
  *
@@ -13,11 +23,8 @@ import { Log, ReportErrorAndExit, asyncExec } from "./helpers.js";
  */
 const checkGitAvailable = async () => {
   try {
-    Log("info", "Checking if git is available...");
-    await asyncExec("which git");
-    Log("success", "Git is available");
+    await checkScriptAvailable("git");
   } catch {
-    Log("error", "Git is not available");
     Log(
       "info",
       "Strap-package uses git to clone the template files so you need to have git installed",
@@ -33,17 +40,17 @@ const checkGitAvailable = async () => {
  * that the system is online. If the resolution fails, it logs an error
  * message indicating that the system is offline and exits the process.
  */
-const checkIfOnline = async () => {
+export const checkIfOnline = async (lookupDomain = "registry.npmjs.org") => {
   try {
     Log("info", "Checking if you are online...");
-    await lookup("registry.npmjs.org");
+    await lookup(lookupDomain);
     Log("success", "You are online");
-  } catch {
+  } catch (e) {
     Log(
       "error",
       "You appear to be offline. Please connect to use strap-package...",
     );
-    process.exit(1);
+    throw e;
   }
 };
 /**
