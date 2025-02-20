@@ -29,7 +29,7 @@ const checkGitAvailable = async () => {
       "info",
       "Strap-package uses git to clone the template files so you need to have git installed",
     );
-    process.exit(1);
+    throw new Error("git is not available");
   }
 };
 /**
@@ -62,7 +62,7 @@ export const checkIfOnline = async (lookupDomain = "registry.npmjs.org") => {
  * process with a non-zero status. If the current version is the LTS version,
  * it logs a success message.
  */
-const checkNodeVersion = () => {
+export const checkNodeVersion = () => {
   const currentNodeVersion = process.versions.node;
   const LTSNodeVersion = process.release.sourceUrl
     .split("node-v")[1]
@@ -77,7 +77,9 @@ const checkNodeVersion = () => {
       `Currently the LTS version is ${LTSNodeVersion}`,
       "Please update your version of Node.",
     );
-    process.exit(1);
+    throw new Error(
+      `You are running Node ${currentNodeVersion}. Strap-package requires LTS Node to be used. Currently the LTS version is ${LTSNodeVersion}. Please update your version of Node.`,
+    );
   }
   Log("success", "You are running Node", currentNodeVersion, "which is LTS");
 };

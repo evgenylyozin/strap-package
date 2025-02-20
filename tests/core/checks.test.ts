@@ -1,5 +1,9 @@
 import { describe, expect, test } from "vitest";
-import { checkIfOnline, checkScriptAvailable } from "../../src/core/checks.js";
+import {
+  checkIfOnline,
+  checkNodeVersion,
+  checkScriptAvailable,
+} from "../../src/core/checks.js";
 
 describe("testing checkScriptAvailable", () => {
   test("we expect that if the script is available in the system it shouldn't throw", async () => {
@@ -16,5 +20,34 @@ describe("testing checkIfOnline", () => {
   });
   test("we expect that if the system is offline the function should throw", async () => {
     await expect(checkIfOnline("nonexistentdomain")).rejects.toThrow();
+  });
+});
+
+describe("testing checkNodeVersion", () => {
+  test("if the node version is LTS then the function should not throw", () => {
+    // redefining process data for testing purposes
+    Object.defineProperty(process, "versions", {
+      value: {
+        node: "LTS",
+      },
+      writable: true,
+    });
+    Object.defineProperty(process, "release", {
+      value: {
+        sourceUrl: "node-vLTS",
+      },
+      writable: true,
+    });
+    checkNodeVersion();
+  });
+  test("if the node version is not LTS then the function should throw", () => {
+    // redefining process data for testing purposes
+    Object.defineProperty(process, "versions", {
+      value: {
+        node: "notLTS",
+      },
+      writable: true,
+    });
+    expect(() => checkNodeVersion()).toThrow();
   });
 });
