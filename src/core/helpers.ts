@@ -2,7 +2,7 @@ import chalk from "chalk";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { LogType, Setup, S } from "./types.js";
-import { readFile, writeFile, rm, lstat } from "fs/promises";
+import { readFile, writeFile, rm, lstat, cp } from "fs/promises";
 import { Settings } from "./constants.js";
 
 /**
@@ -69,7 +69,7 @@ export const Log = (type: LogType, ...messages: string[]) => {
  * @param s - The object to be checked, which can be either `S` or `Setup`.
  * @returns A boolean indicating whether the object is of type `Setup`.
  */
-const IsSetup = (s: S | Setup): s is Setup => {
+export const IsSetup = (s: S | Setup): s is Setup => {
   return "language" in s;
 };
 /**
@@ -119,6 +119,22 @@ export const ReportErrorAndExit = (e: unknown, title: string) => {
   process.exit(1);
 };
 
+export const CopyFile = async (from: string, to: string) => {
+  await cp(from, to);
+};
+export const CurrentDir = () => {
+  return process.cwd();
+};
+export const ReadFileAsString = async (path: string) => {
+  return (await readFile(path)).toString();
+};
+export const ReadFileAsJSON = async <T extends Record<string, unknown>>(
+  path: string,
+) => {
+  const json = JSON.parse((await readFile(path)).toString()) as T;
+  return json;
+};
+
 /**
  * Rewrites the content of a file by replacing occurrences of patterns with specified replacements.
  *
@@ -136,7 +152,7 @@ export const Rewrite = async (
   if (searchArr.length !== replaceArr.length) {
     throw new Error("searchArr and replaceArr must have the same length");
   }
-  let file = (await readFile(path)).toString();
+  let file = await ReadFileAsString(path);
   for (let i = 0; i < searchArr.length; i++) {
     file = file.replace(searchArr[i], replaceArr[i]);
   }
@@ -153,7 +169,7 @@ export const JSONRewrite = async <T extends Record<string, unknown>>(
   path: string,
   replace: T,
 ) => {
-  const json = JSON.parse((await readFile(path)).toString()) as T;
+  const json = await ReadFileAsJSON<T>(path);
   for (const key in replace) {
     json[key] = replace[key];
   }

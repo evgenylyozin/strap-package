@@ -3,6 +3,6 @@
     "outDir": "dist",
     "declarationDir": "dist"
   },
-  "extends": "./tsconfig.json",
-  "files": ["src/index.ts"]
+  "extends": "../tsconfig.json",
+  "files": ["src/test.ts"]
 }

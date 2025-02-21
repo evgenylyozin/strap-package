@@ -4,12 +4,14 @@ import {
   AdjustPackageTemplateForName,
   ModifyTsConfigAccordingToTarget,
 } from "../../src/core/adjust.js";
+
 import {
+  CreateFile,
   CurrentDir,
   ReadFileAsJSON,
   ReadFileAsString,
-} from "../test-helpers.js";
-import { CreateFile, RemoveFile } from "../../src/core/helpers.js";
+  RemoveFile,
+} from "../../src/core/helpers.js";
 
 const packageJson = `{
   "name": "[PACKAGE_NAME_HERE]",
