@@ -2,7 +2,7 @@ import chalk from "chalk";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { LogType, Setup, S } from "./types.js";
-import { readFile, writeFile, rm, lstat, cp } from "fs/promises";
+import { readFile, writeFile, rm, lstat, cp, mkdir } from "fs/promises";
 import { Settings } from "./constants.js";
 
 /**
@@ -119,20 +119,42 @@ export const ReportErrorAndExit = (e: unknown, title: string) => {
   process.exit(1);
 };
 
+/**
+ * Copies the content of a file from one path to another.
+ *
+ * @param from - The path to the file to be copied from.
+ * @param to - The path to the file to be copied to.
+ */
 export const CopyFile = async (from: string, to: string) => {
   await cp(from, to);
 };
+/**
+ * Returns the current working directory.
+ *
+ * @returns The current working directory as a string.
+ */
 export const CurrentDir = () => {
   return process.cwd();
 };
+/**
+ * Reads the content of a file and returns it as a string.
+ *
+ * @param path - The path to the file to be read.
+ * @returns The content of the file as a string.
+ */
 export const ReadFileAsString = async (path: string) => {
   return (await readFile(path)).toString();
 };
+/**
+ * Reads a JSON file and returns the content as a JavaScript object.
+ *
+ * @param path - The path to the JSON file to be read.
+ * @returns The content of the JSON file as a JavaScript object.
+ */
 export const ReadFileAsJSON = async <T extends Record<string, unknown>>(
   path: string,
 ) => {
-  const json = JSON.parse((await readFile(path)).toString()) as T;
-  return json;
+  return JSON.parse((await readFile(path)).toString()) as T;
 };
 
 /**
@@ -176,16 +198,56 @@ export const JSONRewrite = async <T extends Record<string, unknown>>(
   await writeFile(path, JSON.stringify(json, null, 2));
 };
 
-export const CreateFile = async (path: string, content: string) => {
+/**
+ * Creates a file at the specified path with the given content.
+ *
+ * If the `creatingDirectories` flag is set to true, it will create the necessary directories
+ * leading to the file path if they do not already exist.
+ *
+ * @param path - The file path where the file should be created.
+ * @param content - The content to be written to the file.
+ * @param creatingDirectories - A boolean flag indicating whether to create directories if they do not exist.
+ */
+export const CreateFile = async (
+  path: string,
+  content: string,
+  creatingDirectories = false,
+) => {
+  if (creatingDirectories) {
+    // last item in path is a filename
+    // so get the path without the filename
+    const dir = path.split("/").slice(0, -1).join("/");
+    await mkdir(dir, { recursive: true });
+  }
   await writeFile(path, content);
 };
+/**
+ * Removes a file at the given path.
+ *
+ * @param path - The path of the file that needs to be removed.
+ * @returns A promise that resolves when the file has been removed.
+ */
 export const RemoveFile = async (path: string) => {
   if (await CheckFileExists(path)) await rm(path);
 };
-
+/**
+ * Removes the directory at the given path.
+ *
+ * @param path - The path of the directory that needs to be removed.
+ * @returns A promise that resolves when the directory has been removed.
+ */
+export const RemoveDir = async (path: string) => {
+  if (await CheckFileExists(path)) await rm(path, { recursive: true });
+};
+/**
+ * Checks if a file exists at the given path.
+ *
+ * @param path - The path of the file that needs to be checked.
+ * @returns A boolean indicating whether the file exists or not.
+ */
 export const CheckFileExists = async (path: string) => {
   try {
-    await lstat(path);
+    await lstat(path); // throws if file does not exist
     return true;
   } catch {
     return false;
