@@ -17,7 +17,7 @@ import { Setup } from "./types.js";
  * @param {boolean} isDev - Whether to include or exclude development dependencies.
  * @returns {string[]} The assembled dependencies.
  */
-const assembleDependencies = (object: Setup, isDev: boolean) => {
+export const assembleDependencies = (object: Setup, isDev: boolean) => {
   const dependencies: string[] = [];
   for (const [, value] of Object.entries(object)) {
     if (value.isDev === isDev) {
@@ -110,7 +110,7 @@ npm run build`;
   await asyncExecWithCWD(`chmod +x .husky/pre-commit`);
 };
 
-const ExcludeViteIfTargetIsNode = (dependencies: string[]) => {
+export const ExcludeViteIfTargetIsNode = (dependencies: string[]) => {
   if (Settings.target === "node") {
     Log("info", "Excluding vite from dependencies since target is node...");
     return dependencies.filter(
