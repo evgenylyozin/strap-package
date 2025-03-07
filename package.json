@@ -1,6 +1,6 @@
 {
   "name": "strap-package",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Strap files and tools to start developing an npm package",
   "bin": {
     "strap-package": "./dist/index.js"
