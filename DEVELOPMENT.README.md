@@ -10,8 +10,6 @@ git clone https://github.com/evgenylyozin/strap-package.git
 
 ## Initialize the repo to start developing
 
-Prerequisite: Node v20.18.0
-
 ```bash
 npm ci
 ```
@@ -59,3 +57,11 @@ the files due to be uploaded.
 
 - To update the version in the package.json and then
 - To make the new release with this version as a tag on the github platform
+
+## Notes about the tests folder
+
+### tsconfig
+
+The config in the tests folder is used to transpile some ts code to then use it in a subprocess to check process exit codes and output data in some tests (see ReportErrorAndExit tests for example)
+
+Ts code is generated in the tests/src/test.ts file and transpiled into tests/dist folder, generated js files can be used with just "node" command

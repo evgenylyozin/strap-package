@@ -1,11 +1,14 @@
 # Strap Package
 
-Create a boilerplate to start developing a new npm package
+Create a boilerplate to start developing a new npm package. **Only for unix and unix-like
+systems**.
 
-## Notes about the tests folder
+## Usage
 
-### tsconfig
+Should be used via npx:
 
-The config in the tests folder is used to transpile some ts code to then use it in a subprocess to check process exit codes and output data in some tests (see ReportErrorAndExit tests for example)
+```bash
+npx strap-package
+```
 
-Ts code is generated in the tests/src/test.ts file and transpiled into tests/dist folder, generated js files can be used with just "node" command
+Creates a folder with picked name in the directory the npx command was called from
